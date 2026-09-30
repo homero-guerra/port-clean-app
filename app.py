@@ -51,12 +51,23 @@ try:
             {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
         ]
 
-    # Extrair lista de Ativos únicos da base de dados para a lista suspensa
-    coluna_ativo_nome = 'ATIVO' if 'ATIVIVO' in df_os.columns or 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else None)
+    # Identificar automaticamente a coluna de Ativo/Equipamento (procurando termos comuns ou usando índice seguro)
+    coluna_ativo_nome = None
+    candidatos_ativo = ['ATIVO', 'EQUIPAMENTO', 'LOCAL', 'TAG', 'AREA']
+    for cand in candidatos_ativo:
+        if cand in df_os.columns:
+            coluna_ativo_nome = cand
+            break
+    if not coluna_ativo_nome and len(df_os.columns) > 6:
+        coluna_ativo_nome = df_os.columns[6] # Geralmente a 7ª coluna no padrão Ferroport
+
     if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
         lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
     else:
-        lista_ativos = ["3220TR04", "3230TR02", "CT00", "CT01", "CT02", "PIER"]
+        # Lista padrão robusta caso a coluna exata varie no CSV
+        lista_ativos = ["CT00", "CT01", "CT02", "CT03", "CT04", "CT05", "CT06", "CT07", "CT08", 
+                        "3220TR01", "3220TR02", "3220TR03", "3220TR04", "3220TR05", 
+                        "3230TR01", "3230TR02", "3230TR03", "PIER", "MANOBRA"]
 
     # ==========================================
     # BARRA LATERAL: MENU DE CADASTRO E PARÂMETROS
@@ -98,22 +109,23 @@ try:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
         with col_f2:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-            # Lista suspensa com todos os códigos de ativos extraídos da base
+            # Lista suspensa com todos os códigos de ativos detetados
             ativo_form = st.selectbox("Equipamento / Ativo", options=lista_ativos)
         with col_f3:
             hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
             hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        # Pré-consulta dinâmica: Filtrar as atividades da base associadas ao Ativo escolhido
+        # Identificar coluna de atividade na base
         col_atividade_filtro = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+
+        # Pré-consulta dinâmica: Filtrar atividades associadas ao Ativo escolhido
         if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
-            df_ativo_filtrado = df_os[df_os[coluna_ativo_nome].astype(str) == str(ativo_form)]
+            df_ativo_filtrado = df_os[df_os[coluna_ativo_nome].astype(str).str.upper() == str(ativo_form).upper()]
             atividades_filtradas = sorted(df_ativo_filtrado[col_atividade_filtro].dropna().astype(str).unique().tolist())
             if not atividades_filtradas:
-                # Fallback caso não haja registos exatos para o ativo selecionado
-                atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:50]
+                atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:100]
         else:
-            atividades_filtradas = ["LAVAGEM DA ESTRUTURA", "LIMPEZA DE PISO", "MANUTENÇÃO CORRETIVA"]
+            atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:100]
 
         atividade_form = st.selectbox("Selecione a Atividade da Base (Pré-consultada pelo Ativo)", options=atividades_filtradas)
         
