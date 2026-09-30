@@ -12,7 +12,6 @@ st.set_page_config(
 # Estilização CSS para alargar o bloco lateral esquerdo e otimizar o layout
 st.markdown("""
 <style>
-    /* Aumentar a largura da barra lateral esquerda */
     [data-testid="stSidebar"] {
         min-width: 380px !important;
         max-width: 420px !important;
@@ -99,9 +98,17 @@ try:
     # ==========================================
     # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
     # ==========================================
-    st.subheader("➕ Inserir Nova Atividade no Planejamento")
+    # Cabeçalho integrado com o título e o botão de ação lado a lado
+    col_tit, col_btn_top = st.columns([3, 1])
+    with col_tit:
+        st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
     with st.form("form_inserir_atividade"):
+        # Botão de submissão posicionado no topo ao lado do título (através de flag ou submissão direta no form)
+        with col_btn_top:
+            st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+            botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
+
         # 5 colunas exatas na mesma linha
         col1, col2, col3, col4, col5 = st.columns(5)
         
@@ -139,10 +146,6 @@ try:
             ativo_extraido = "GERAL"
 
         st.info(f"📌 **Ativo Vinculado:** {ativo_extraido} | **Descrição:** {descricao_atividade}")
-        
-        col_btn1, col_col2_btn = st.columns([1, 4])
-        with col_btn1:
-            botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano")
 
         if botao_inserir:
             novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
