@@ -9,24 +9,31 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS para aproximar tudo do topo e otimizar a barra lateral
+# Estilização CSS avançada para eliminar margens e subir tudo ao máximo no topo
 st.markdown("""
 <style>
+    /* Remover espaçamento superior da barra lateral */
     [data-testid="stSidebar"] {
         min-width: 420px !important;
         max-width: 460px !important;
+    }
+    [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
     }
-    div[data-testid="stSidebarUserContent"] {
-        padding-top: 0.5rem !important;
+    
+    /* Remover o espaçamento superior padrão da página principal */
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 2rem !important;
     }
+    
     div[data-testid="stButton"] button { font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel
+# Título principal do painel alinhado no topo absoluto
 st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
 @st.cache_data
@@ -76,13 +83,11 @@ try:
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO E INSERÇÃO
     # ==========================================
-    st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
+    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
-    # Botão "Adicionar ao Plano" posicionado diretamente abaixo da Data do Planejamento na barra lateral
     with st.sidebar:
         if st.button("🚀 Adicionar ao Plano", use_container_width=True):
-            # Acionará a submissão logo abaixo
             st.session_state['trigger_adicionar'] = True
 
     st.sidebar.markdown("---")
@@ -129,7 +134,6 @@ try:
 
         st.markdown("---")
         
-        # Campo COD. ATIVIDADE com consulta e seleção por clique
         opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_opcoes_atividades)
 
         if " - " in opcao_selecionada:
@@ -138,7 +142,6 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
-        # Consulta SQL simulada para obter o ativo
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
             if not resultado_sql.empty:
@@ -148,7 +151,6 @@ try:
         else:
             ativo_extraido = "GERAL"
 
-        # Exibição limpa apenas com a descrição da atividade (sem menção ao Ativo)
         st.info(f"{descricao_atividade}")
 
         botao_inserir_form = st.form_submit_button("🚀 Salvar na Grade", use_container_width=True)
@@ -175,8 +177,8 @@ try:
     # ==========================================
     # ÁREA PRINCIPAL: GRADES DE PLANEJAMENTO OPERACIONAL
     # ==========================================
-    st.subheader("📋 Grade de Planejamento Diário Operacional")
-    st.markdown(f"**Data Stamp Ativa:** {data_stamp.strftime('%d/%m/%Y')}")
+    st.markdown("### 📋 Grade de Planejamento Diário Operacional")
+    st.markdown(f"<p style='color: #a0a0a0; margin-top: -8px;'>Data Stamp Ativa: {data_stamp.strftime('%d/%m/%Y')}</p>", unsafe_allow_html=True)
 
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
@@ -187,7 +189,7 @@ try:
     ]
 
     for codigo_turno, titulo_turno in turnos_secoes:
-        st.markdown(f"### {titulo_turno}")
+        st.markdown(f"#### {titulo_turno}")
         df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
         
         if not df_turno_atual.empty:
