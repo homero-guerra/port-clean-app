@@ -13,10 +13,18 @@ st.set_page_config(
 st.markdown("<h1>⚓ PortClean AutoPlanner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planeamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
-# Função para carregar e processar os dados com segurança
+# Função para carregar e processar os dados com segurança e deteção de delimitador
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
-    df = pd.read_csv(caminho_arquivo)
+    try:
+        # Tenta ler com ponto e vírgula (padrão comum em exportações PT)
+        df = pd.read_csv(caminho_arquivo, sep=';', encoding='utf-8', low_memory=False)
+        if len(df.columns) <= 1:
+            df = pd.read_csv(caminho_arquivo, sep=',', encoding='utf-8', low_memory=False)
+    except:
+        # Fallback para detecção automática por motor Python
+        df = pd.read_csv(caminho_arquivo, sep=None, engine='python', encoding='utf-8')
+        
     # Tratamento de datas se existirem colunas correspondentes
     if 'DATA_INICIO_DT' in df.columns:
         df['DATA_INICIO_DT'] = pd.to_datetime(df['DATA_INICIO_DT'], errors='coerce')
@@ -79,7 +87,7 @@ try:
     st.subheader("📋 Planeamento Diário Operacional (Baseado no Histórico de Frequência)")
     st.markdown("Matriz automatizada de prioridades para atribuição de turmas e turnos nas frentes críticas de granéis sólidos.")
 
-    # Tabela de Planeamento Simulada / Extraída do Histórico
+    # Tabela de Planeamento Estruturada
     dados_planeamento = [
         {"Prioridade": "Alta", "Equipamento / Área": "3230TR02 - Calda", "Atividade Discriminada": "Lavagem da Estrutura da Calda", "Frequência Média": "A cada 7 dias", "Turno Sugerido": "Noturno", "Turma Alocada": "Branca", "Estado / Ação": "Agendado"},
         {"Prioridade": "Alta", "Equipamento / Área": "3230TR02.2 - Balança", "Atividade Discriminada": "Limpeza e Lavagem Geral", "Frequência Média": "A cada 14 dias", "Turno Sugerido": "Diurno", "Turma Alocada": "Verde", "Estado / Ação": "Em Execução"},
