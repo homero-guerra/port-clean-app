@@ -9,9 +9,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS personalizada
+# Estilização CSS para alargar o bloco lateral esquerdo e otimizar o layout
 st.markdown("""
 <style>
+    /* Aumentar a largura da barra lateral esquerda */
+    [data-testid="stSidebar"] {
+        min-width: 380px !important;
+        max-width: 420px !important;
+    }
     div[data-testid="stButton"] button { font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -66,17 +71,17 @@ try:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE CADASTRO
+    # BARRA LATERAL ALARGADA: MENU DE PLANEJAMENTO
     # ==========================================
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### ➕ Cadastro de Chefes")
-    with st.sidebar.expander("Novo Chefe de Turno"):
-        novo_matricula = st.text_input("Matrícula")
+    st.sidebar.markdown("### ➕ Cadastro de Chefes de Turno")
+    with st.sidebar.expander("Novo Chefe de Turno", expanded=True):
+        novo_matricula = st.text_input("Matrícula do Funcionário")
         novo_nome = st.text_input("Nome Completo")
-        if st.button("Salvar Chefe"):
+        if st.button("Salvar Chefe de Turno", use_container_width=True):
             if novo_matricula and novo_nome:
                 novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
                 if novo_chefe_str not in st.session_state.lista_chefes:
@@ -84,9 +89,12 @@ try:
                     st.success("Chefe cadastrado com sucesso!")
                     st.rerun()
                 else:
-                    st.warning("Chefe já cadastrado.")
+                    st.warning("Este chefe já está cadastrado.")
             else:
-                st.error("Preencha matrícula e nome.")
+                st.error("Preencha a matrícula e o nome.")
+
+    st.sidebar.markdown("---")
+    st.sidebar.info("💡 **Dica:** Preencha os campos ao lado para adicionar novas atividades diretamente nas grades dos turnos correspondentes.")
 
     # ==========================================
     # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
@@ -142,7 +150,7 @@ try:
                 "ID": novo_id,
                 "TURMA": turma_form,
                 "CHEFE DE TURNO": chefe_form,
-                "TURNO": turno_form,  # Turno selecionado dita o bloco de destino
+                "TURNO": turno_form,  # Direcionamento automático para o bloco do turno correspondente
                 "DATA": data_stamp.strftime('%d/%m/%Y'),
                 "HORA INICIAL": hora_ini_form,
                 "HORA FINAL": hora_fim_form,
@@ -173,7 +181,7 @@ try:
 
     for codigo_turno, titulo_turno in turnos_secoes:
         st.markdown(f"### {titulo_turno}")
-        # Filtra e direciona estritamente para o bloco correspondente ao turno selecionado
+        # Exibe as grades correspondentes direcionadas de forma dinâmica
         df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
         
         if not df_turno_atual.empty:
