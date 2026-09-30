@@ -30,6 +30,9 @@ def carregar_e_processar_dados(caminho_arquivo):
     except:
         df = pd.read_csv(caminho_arquivo, sep=None, engine='python', encoding='utf-8')
         
+    # Limpar espaços em branco nos nomes das colunas para evitar incompatibilidades
+    df.columns = df.columns.str.strip()
+        
     if 'DATA_INICIO_DT' in df.columns:
         df['DATA_INICIO_DT'] = pd.to_datetime(df['DATA_INICIO_DT'], errors='coerce')
     return df
@@ -46,45 +49,21 @@ try:
 
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = [
-            {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "STATUS": "Em Execução"},
-            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL", "STATUS": "Em Execução"},
-            {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
+            {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR04.3] LAVAGEM DA MOTORIZAÇÃO DA TR", "STATUS": "Em Execução"},
+            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"}
         ]
 
-    # Obter lista de todos os COD. ATIVIDADE únicos da base de dados com segurança
-    col_cod_atividade = None
-    for cand in ['COD. ATIVIDADE', 'COD_ATIVIDADE', 'COD ATIVIDADE', 'CODIGO ATIVIDADE']:
-        if cand in df_os.columns:
-            col_cod_atividade = cand
-            break
-    if not col_cod_atividade and len(df_os.columns) > 1:
-        col_cod_atividade = df_os.columns[1] # Tentativa por índice padrão
-
-    if col_cod_atividade and col_cod_atividade in df_os.columns:
-        lista_cod_atividades = sorted(df_os[col_cod_atividade].dropna().astype(str).unique().tolist())
+    # Obter lista exata e direta da coluna "COD. ATIVIDADE"
+    col_cod = 'COD. ATIVIDADE'
+    if col_cod in df_os.columns:
+        lista_cod_atividades = sorted(df_os[col_cod].dropna().astype(str).unique().tolist())
     else:
-        lista_cod_atividades = ["001", "002", "003", "004"]
+        # Fallback caso encontre variações sem ponto
+        lista_cod_atividades = ["3220TR04.3", "3220TR05.4", "CT08.4", "CT00.7", "CT01.5", "EP02.1"]
 
-    # Obter lista de Ativos corrigida (procurando explicitamente por colunas de ativo/equipamento)
-    coluna_ativo_nome = None
-    for cand in ['ATIVO', 'EQUIPAMENTO', 'TAG', 'LOCAL']:
-        if cand in df_os.columns:
-            coluna_ativo_nome = cand
-            break
-    if not coluna_ativo_nome:
-        # Se não achar pelo nome exato, varre as colunas procurando valores que pareçam códigos de equipamentos (ex: CT, TR)
-        for col in df_os.columns:
-            amostra = str(df_os[col].dropna().iloc[0]) if not df_os[col].dropna().empty else ""
-            if "TR" in amostra.upper() or "CT" in amostra.upper() or "P_IER" in amostra.upper():
-                coluna_ativo_nome = col
-                break
-        if not coluna_ativo_nome and len(df_os.columns) > 5:
-            coluna_ativo_nome = df_os.columns[5]
-
-    if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
-        lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
-    else:
-        lista_ativos = ["CT00", "CT01", "CT02", "CT03", "CT04", "3220TR01", "3220TR02", "3230TR02", "PIER"]
+    # Obter lista de Ativos
+    coluna_ativo_nome = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
+    lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
 
     # ==========================================
     # BARRA LATERAL: MENU DE CADASTRO
@@ -126,17 +105,17 @@ try:
             hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
             hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        # Lista direta de todos os COD. ATIVIDADE
+        # Seleção direta de COD. ATIVIDADE
         cod_atividade_escolhido = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_cod_atividades)
 
-        # Buscar descrição correspondente ao COD. ATIVIDADE
-        col_desc_atividade = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
-        if col_cod_atividade:
-            match_desc = df_os[df_os[col_cod_atividade].astype(str) == str(cod_atividade_escolhido)]
+        # Buscar descrição da atividade correspondente na base
+        col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+        if col_cod in df_os.columns:
+            match_desc = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
             if not match_desc.empty:
-                descricao_atividade = match_desc[col_desc_atividade].iloc[0]
+                descricao_atividade = match_desc[col_desc].iloc[0]
             else:
-                descricao_atividade = "Atividade Operacional da Base"
+                descricao_atividade = "Atividade Operacional Registrada"
         else:
             descricao_atividade = "Limpeza Industrial"
 
@@ -176,7 +155,7 @@ try:
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno Administrativo (ADM)"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
