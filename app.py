@@ -45,25 +45,25 @@ try:
         st.session_state.lista_chefes = sorted(list(set(chefes_iniciais)))
 
     if 'plano_operacional' not in st.session_state:
-        # Linhas iniciais pré-carregadas para demonstração imediata
         st.session_state.plano_operacional = [
             {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "STATUS": "Em Execução"},
             {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL", "STATUS": "Em Execução"},
             {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
         ]
 
-    # Extrair atividades únicas da base sem duplicatas para o menu
-    if 'ATIVIDADE' in df_os.columns:
-        atividades_menu = sorted(df_os['ATIVIDADE'].dropna().astype(str).unique().tolist())
+    # Extrair lista de Ativos únicos da base de dados para a lista suspensa
+    coluna_ativo_nome = 'ATIVO' if 'ATIVIVO' in df_os.columns or 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else None)
+    if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
+        lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
     else:
-        atividades_menu = ["LAVAGEM DA MOTORIZAÇÃO DA TR", "LIMPEZA DO PISO INFERIOR", "RETIRADA DE MATERIAL"]
+        lista_ativos = ["3220TR04", "3230TR02", "CT00", "CT01", "CT02", "PIER"]
 
     # ==========================================
     # BARRA LATERAL: MENU DE CADASTRO E PARÂMETROS
     # ==========================================
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
     
-    # Stamp de Data
+    # Stamp de Data (Calendário)
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
@@ -84,10 +84,10 @@ try:
                 st.error("Preencha matrícula e nome.")
 
     st.sidebar.markdown("---")
-    st.sidebar.info("Utilize o formulário central para inserir atividades diretamente na grade de planejamento por turnos.")
+    st.sidebar.info("Utilize o formulário central para inserir atividades com pré-consulta inteligente de ativos.")
 
     # ==========================================
-    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
+    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO COM PRÉ-CONSULTA)
     # ==========================================
     st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
@@ -98,12 +98,24 @@ try:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
         with col_f2:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-            ativo_form = st.text_input("Equipamento / Ativo (Ex: 3230TR02, CT01)", value="CT01")
+            # Lista suspensa com todos os códigos de ativos extraídos da base
+            ativo_form = st.selectbox("Equipamento / Ativo", options=lista_ativos)
         with col_f3:
             hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
             hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        atividade_form = st.selectbox("Selecione a Atividade da Base", options=atividades_menu)
+        # Pré-consulta dinâmica: Filtrar as atividades da base associadas ao Ativo escolhido
+        col_atividade_filtro = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+        if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
+            df_ativo_filtrado = df_os[df_os[coluna_ativo_nome].astype(str) == str(ativo_form)]
+            atividades_filtradas = sorted(df_ativo_filtrado[col_atividade_filtro].dropna().astype(str).unique().tolist())
+            if not atividades_filtradas:
+                # Fallback caso não haja registos exatos para o ativo selecionado
+                atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:50]
+        else:
+            atividades_filtradas = ["LAVAGEM DA ESTRUTURA", "LIMPEZA DE PISO", "MANUTENÇÃO CORRETIVA"]
+
+        atividade_form = st.selectbox("Selecione a Atividade da Base (Pré-consultada pelo Ativo)", options=atividades_filtradas)
         
         col_btn1, col_col2_btn = st.columns([1, 4])
         with col_btn1:
@@ -119,7 +131,7 @@ try:
                 "DATA": data_stamp.strftime('%d/%m/%Y'),
                 "HORA INICIAL": hora_ini_form,
                 "HORA FINAL": hora_fim_form,
-                "ATIVO": ativo_form.upper(),
+                "ATIVO": str(ativo_form).upper(),
                 "Retirada NR12 ?": "NÃO",
                 "DADOS DA ATIVIDADE": atividade_form,
                 "STATUS": "Agendado"
@@ -138,7 +150,6 @@ try:
 
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
-    # Exibição organizada por Turnos em blocos dedicados
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno Administrativo (ADM)"),
