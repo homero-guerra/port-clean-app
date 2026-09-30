@@ -31,7 +31,7 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # BARRA LATERAL: FILTROS DINÂMICOS & TAGS DE TURMAS
+    # BARRA LATERAL: FILTROS DINÂMICOS & BOTÕES DE TURMAS
     # ==========================================
     st.sidebar.header("🎛️ Filtros Operacionais")
     
@@ -39,33 +39,26 @@ try:
     turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else []
     turno_selecionado = st.sidebar.multiselect("Filtrar por Turno", options=turnos_disponiveis, default=turnos_disponiveis)
 
-    # Cores associadas às turmas para os botões/tags
+    # Gestão do Filtro por Turmas com botões limpos
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🏷️ Filtro por Turma (Tags)")
+    st.sidebar.markdown("### 🏷️ Filtro por Turma")
     
-    turmas_disponiveis = df_os['TURMA'].dropna().unique().tolist() if 'TURMA' in df_os.columns else ["BRANCA", "VERDE", "AZUL", "AMARELA"]
-    
-    # Inicializar estado dos filtros de turmas se não existir
+    turmas_disponiveis = [str(t).upper() for t in df_os['TURMA'].dropna().unique().tolist()] if 'TURMA' in df_os.columns else ["BRANCA", "VERDE", "AZUL", "AMARELA"]
+    turmas_disponiveis = sorted(list(set(turmas_disponiveis)))
+
+    # Inicializar estado dos filtros de turmas
     if 'turmas_ativas' not in st.session_state:
         st.session_state.turmas_ativas = {turma: True for turma in turmas_disponiveis}
 
-    # Estilos visuais personalizados por cor de turma
-    cores_turmas = {
-        "BRANCA": "#f0f2f6",
-        "VERDE": "#28a745",
-        "AZUL": "#007bff",
-        "AMARELA": "#ffc107"
-    }
-
-    # Criar botões estilo tag interativos na barra lateral
     turma_selecionada_filtros = []
+    
+    # Criar botões limpos para cada turma
     for turma in turmas_disponiveis:
-        cor = cores_turmas.get(str(turma).upper(), "#6c757d")
-        # Botão que alterna o estado do filtro ao ser clicado
         ativo = st.session_state.turmas_ativas.get(turma, True)
-        label = f"🟢 [{turma}]" if ativo else f"⚪ [{turma} (Oculto)]"
+        # Rótulo customizado indicando visualmente se está ativo ou filtrado
+        label = f"🟢 {turma}" if ativo else f"⚪ {turma} (Inativo)"
         
-        if st.sidebar.button(f"Turma: {turma}", key=f"btn_turma_{turma}"):
+        if st.sidebar.button(label, key=f"btn_turma_{turma}", use_container_width=True):
             st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
             st.rerun()
             
@@ -81,7 +74,8 @@ try:
     if turno_selecionado and 'TURNO' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['TURNO'].isin(turno_selecionado)]
     if turma_selecionada_filtros and 'TURMA' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURMA'].isin(turma_selecionada_filtros)]
+        # Assegurar correspondência maiúscula para o filtro
+        df_filtrado = df_filtrado[df_filtrado['TURMA'].astype(str).str.upper().isin(turma_selecionada_filtros)]
     if atividade_selecionada and 'ATIVIDADE' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['ATIVIDADE'].isin(atividade_selecionada)]
 
