@@ -30,7 +30,6 @@ def carregar_e_processar_dados(caminho_arquivo):
     except:
         df = pd.read_csv(caminho_arquivo, sep=None, engine='python', encoding='utf-8')
         
-    # Limpar espaços em branco nos nomes das colunas para evitar incompatibilidades
     df.columns = df.columns.str.strip()
         
     if 'DATA_INICIO_DT' in df.columns:
@@ -41,7 +40,7 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # GESTÃO DO ESTADO DA SESSÃO (GRUPOS DE PLANEJAMENTO)
+    # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
     if 'lista_chefes' not in st.session_state:
         chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
@@ -50,20 +49,15 @@ try:
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = [
             {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR04.3] LAVAGEM DA MOTORIZAÇÃO DA TR", "STATUS": "Em Execução"},
-            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"}
+            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "CT08", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"}
         ]
 
-    # Obter lista exata e direta da coluna "COD. ATIVIDADE"
+    # Obter lista de COD. ATIVIDADE simulando consulta SQL distinta (SELECT DISTINCT COD. ATIVIDADE)
     col_cod = 'COD. ATIVIDADE'
     if col_cod in df_os.columns:
         lista_cod_atividades = sorted(df_os[col_cod].dropna().astype(str).unique().tolist())
     else:
-        # Fallback caso encontre variações sem ponto
         lista_cod_atividades = ["3220TR04.3", "3220TR05.4", "CT08.4", "CT00.7", "CT01.5", "EP02.1"]
-
-    # Obter lista de Ativos
-    coluna_ativo_nome = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
-    lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
 
     # ==========================================
     # BARRA LATERAL: MENU DE CADASTRO
@@ -89,35 +83,46 @@ try:
                 st.error("Preencha matrícula e nome.")
 
     # ==========================================
-    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
+    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO REESTRUTURADO)
     # ==========================================
     st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
     with st.form("form_inserir_atividade"):
-        col_f1, col_f2, col_f3 = st.columns(3)
-        with col_f1:
+        # 5 colunas exatas na mesma linha conforme solicitado
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
             chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
-            turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
-        with col_f2:
+        with col2:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-            ativo_form = st.selectbox("Equipamento / Ativo", options=lista_ativos)
-        with col_f3:
+        with col3:
+            turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
+        with col4:
             hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
+        with col5:
             hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        # Seleção direta de COD. ATIVIDADE
+        st.markdown("---")
+        
+        # Campo de COD. ATIVIDADE na linha abaixo com consulta SQL simulada por seleção de clique
         cod_atividade_escolhido = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_cod_atividades)
 
-        # Buscar descrição da atividade correspondente na base
+        # Consulta SQL para recuperar a descrição exata e o ativo correspondente ao código selecionado
         col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+        col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
+        
         if col_cod in df_os.columns:
-            match_desc = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
-            if not match_desc.empty:
-                descricao_atividade = match_desc[col_desc].iloc[0]
+            # Consulta estilo SQL filtrando o DataFrame da base
+            resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
+            if not resultado_sql.empty:
+                descricao_atividade = resultado_sql[col_desc].iloc[0]
+                ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper() if col_ativo in df_os.columns else "GERAL"
             else:
                 descricao_atividade = "Atividade Operacional Registrada"
+                ativo_extraido = "GERAL"
         else:
             descricao_atividade = "Limpeza Industrial"
+            ativo_extraido = "GERAL"
 
         st.info(f"📌 **Descrição da Atividade Vinculada:** {descricao_atividade}")
         
@@ -135,7 +140,7 @@ try:
                 "DATA": data_stamp.strftime('%d/%m/%Y'),
                 "HORA INICIAL": hora_ini_form,
                 "HORA FINAL": hora_fim_form,
-                "ATIVO": str(ativo_form).upper(),
+                "ATIVO": ativo_extraido,
                 "Retirada NR12 ?": "NÃO",
                 "DADOS DA ATIVIDADE": f"[{cod_atividade_escolhido}] {descricao_atividade}",
                 "STATUS": "Agendado"
