@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS personalizada para os botões e áreas do planeamento
+# Estilização CSS personalizada
 st.markdown("""
 <style>
     div[data-testid="stButton"] button { font-weight: bold; }
@@ -51,30 +51,45 @@ try:
             {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
         ]
 
-    # Identificar automaticamente a coluna de Ativo/Equipamento (procurando termos comuns ou usando índice seguro)
+    # Obter lista de todos os COD. ATIVIDADE únicos da base de dados com segurança
+    col_cod_atividade = None
+    for cand in ['COD. ATIVIDADE', 'COD_ATIVIDADE', 'COD ATIVIDADE', 'CODIGO ATIVIDADE']:
+        if cand in df_os.columns:
+            col_cod_atividade = cand
+            break
+    if not col_cod_atividade and len(df_os.columns) > 1:
+        col_cod_atividade = df_os.columns[1] # Tentativa por índice padrão
+
+    if col_cod_atividade and col_cod_atividade in df_os.columns:
+        lista_cod_atividades = sorted(df_os[col_cod_atividade].dropna().astype(str).unique().tolist())
+    else:
+        lista_cod_atividades = ["001", "002", "003", "004"]
+
+    # Obter lista de Ativos corrigida (procurando explicitamente por colunas de ativo/equipamento)
     coluna_ativo_nome = None
-    candidatos_ativo = ['ATIVO', 'EQUIPAMENTO', 'LOCAL', 'TAG', 'AREA']
-    for cand in candidatos_ativo:
+    for cand in ['ATIVO', 'EQUIPAMENTO', 'TAG', 'LOCAL']:
         if cand in df_os.columns:
             coluna_ativo_nome = cand
             break
-    if not coluna_ativo_nome and len(df_os.columns) > 6:
-        coluna_ativo_nome = df_os.columns[6] # Geralmente a 7ª coluna no padrão Ferroport
+    if not coluna_ativo_nome:
+        # Se não achar pelo nome exato, varre as colunas procurando valores que pareçam códigos de equipamentos (ex: CT, TR)
+        for col in df_os.columns:
+            amostra = str(df_os[col].dropna().iloc[0]) if not df_os[col].dropna().empty else ""
+            if "TR" in amostra.upper() or "CT" in amostra.upper() or "P_IER" in amostra.upper():
+                coluna_ativo_nome = col
+                break
+        if not coluna_ativo_nome and len(df_os.columns) > 5:
+            coluna_ativo_nome = df_os.columns[5]
 
     if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
         lista_ativos = sorted(df_os[coluna_ativo_nome].dropna().astype(str).unique().tolist())
     else:
-        # Lista padrão robusta caso a coluna exata varie no CSV
-        lista_ativos = ["CT00", "CT01", "CT02", "CT03", "CT04", "CT05", "CT06", "CT07", "CT08", 
-                        "3220TR01", "3220TR02", "3220TR03", "3220TR04", "3220TR05", 
-                        "3230TR01", "3230TR02", "3230TR03", "PIER", "MANOBRA"]
+        lista_ativos = ["CT00", "CT01", "CT02", "CT03", "CT04", "3220TR01", "3220TR02", "3230TR02", "PIER"]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE CADASTRO E PARÂMETROS
+    # BARRA LATERAL: MENU DE CADASTRO
     # ==========================================
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
-    
-    # Stamp de Data (Calendário)
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
@@ -94,11 +109,8 @@ try:
             else:
                 st.error("Preencha matrícula e nome.")
 
-    st.sidebar.markdown("---")
-    st.sidebar.info("Utilize o formulário central para inserir atividades com pré-consulta inteligente de ativos.")
-
     # ==========================================
-    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO COM PRÉ-CONSULTA)
+    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
     # ==========================================
     st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
@@ -109,25 +121,26 @@ try:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
         with col_f2:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-            # Lista suspensa com todos os códigos de ativos detetados
             ativo_form = st.selectbox("Equipamento / Ativo", options=lista_ativos)
         with col_f3:
             hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
             hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        # Identificar coluna de atividade na base
-        col_atividade_filtro = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+        # Lista direta de todos os COD. ATIVIDADE
+        cod_atividade_escolhido = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_cod_atividades)
 
-        # Pré-consulta dinâmica: Filtrar atividades associadas ao Ativo escolhido
-        if coluna_ativo_nome and coluna_ativo_nome in df_os.columns:
-            df_ativo_filtrado = df_os[df_os[coluna_ativo_nome].astype(str).str.upper() == str(ativo_form).upper()]
-            atividades_filtradas = sorted(df_ativo_filtrado[col_atividade_filtro].dropna().astype(str).unique().tolist())
-            if not atividades_filtradas:
-                atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:100]
+        # Buscar descrição correspondente ao COD. ATIVIDADE
+        col_desc_atividade = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+        if col_cod_atividade:
+            match_desc = df_os[df_os[col_cod_atividade].astype(str) == str(cod_atividade_escolhido)]
+            if not match_desc.empty:
+                descricao_atividade = match_desc[col_desc_atividade].iloc[0]
+            else:
+                descricao_atividade = "Atividade Operacional da Base"
         else:
-            atividades_filtradas = sorted(df_os[col_atividade_filtro].dropna().astype(str).unique().tolist())[:100]
+            descricao_atividade = "Limpeza Industrial"
 
-        atividade_form = st.selectbox("Selecione a Atividade da Base (Pré-consultada pelo Ativo)", options=atividades_filtradas)
+        st.info(f"📌 **Descrição da Atividade Vinculada:** {descricao_atividade}")
         
         col_btn1, col_col2_btn = st.columns([1, 4])
         with col_btn1:
@@ -145,7 +158,7 @@ try:
                 "HORA FINAL": hora_fim_form,
                 "ATIVO": str(ativo_form).upper(),
                 "Retirada NR12 ?": "NÃO",
-                "DADOS DA ATIVIDADE": atividade_form,
+                "DADOS DA ATIVIDADE": f"[{cod_atividade_escolhido}] {descricao_atividade}",
                 "STATUS": "Agendado"
             }
             st.session_state.plano_operacional.append(novo_registro)
@@ -163,7 +176,7 @@ try:
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno Administrativo (ADM)"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
