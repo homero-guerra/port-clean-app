@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS para otimizar a barra lateral, aproximando o formulário do topo
+# Estilização CSS para aproximar tudo do topo e otimizar a barra lateral
 st.markdown("""
 <style>
     [data-testid="stSidebar"] {
@@ -18,7 +18,7 @@ st.markdown("""
         padding-top: 0rem !important;
     }
     div[data-testid="stSidebarUserContent"] {
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
     }
     div[data-testid="stButton"] button { font-weight: bold; }
 </style>
@@ -79,11 +79,16 @@ try:
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
+    # Botão "Adicionar ao Plano" posicionado diretamente abaixo da Data do Planejamento na barra lateral
+    with st.sidebar:
+        if st.button("🚀 Adicionar ao Plano", use_container_width=True):
+            # Acionará a submissão logo abaixo
+            st.session_state['trigger_adicionar'] = True
+
     st.sidebar.markdown("---")
 
     with st.sidebar.form("form_inserir_atividade"):
         
-        # Cabeçalho integrado com o label e botão compacto (+) ao lado para registar novo chefe
         col_lbl_chefe, col_btn_plus = st.columns([4, 1])
         with col_lbl_chefe:
             chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
@@ -143,12 +148,12 @@ try:
         else:
             ativo_extraido = "GERAL"
 
-        # Exibição limpa sem o emoji de fixador e sem o rótulo "Desc:"
-        st.info(f"**Ativo:** {ativo_extraido}\n\n{descricao_atividade}")
+        # Exibição limpa apenas com a descrição da atividade (sem menção ao Ativo)
+        st.info(f"{descricao_atividade}")
 
-        botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
+        botao_inserir_form = st.form_submit_button("🚀 Salvar na Grade", use_container_width=True)
 
-        if botao_inserir:
+        if botao_inserir_form or st.session_state.pop('trigger_adicionar', False):
             novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
             novo_registro = {
                 "ID": novo_id,
@@ -176,7 +181,7 @@ try:
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno Administrativo (ADM)"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
