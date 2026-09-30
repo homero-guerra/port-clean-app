@@ -39,31 +39,48 @@ try:
     turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else []
     turno_selecionado = st.sidebar.multiselect("Filtrar por Turno", options=turnos_disponiveis, default=turnos_disponiveis)
 
-    # Gestão do Filtro por Turmas com botões limpos
+    # Gestão do Filtro por Turmas
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🏷️ Filtro por Turma")
     
-    turmas_disponiveis = [str(t).upper() for t in df_os['TURMA'].dropna().unique().tolist()] if 'TURMA' in df_os.columns else ["BRANCA", "VERDE", "AZUL", "AMARELA"]
-    turmas_disponiveis = sorted(list(set(turmas_disponiveis)))
+    turmas_base = ["AMARELA", "AZUL", "BRANCA", "VERDE", "ADM"]
 
     # Inicializar estado dos filtros de turmas
     if 'turmas_ativas' not in st.session_state:
-        st.session_state.turmas_ativas = {turma: True for turma in turmas_disponiveis}
+        st.session_state.turmas_ativas = {turma: True for turma in turmas_base}
 
     turma_selecionada_filtros = []
-    
-    # Criar botões limpos para cada turma
-    for turma in turmas_disponiveis:
+
+    # Organizar as 4 turmas principais em duas colunas na barra lateral
+    col_t1, col_t2 = st.sidebar.columns(2)
+    turmas_principais = ["AMARELA", "AZUL", "BRANCA", "VERDE"]
+
+    for i, turma in enumerate(turmas_principais):
         ativo = st.session_state.turmas_ativas.get(turma, True)
-        # Rótulo customizado indicando visualmente se está ativo ou filtrado
-        label = f"🟢 {turma}" if ativo else f"⚪ {turma} (Inativo)"
+        label = f"{turma}" if ativo else f"{turma} (Off)"
         
-        if st.sidebar.button(label, key=f"btn_turma_{turma}", use_container_width=True):
-            st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
-            st.rerun()
-            
+        coluna_atual = col_t1 if i % 2 == 0 else col_t2
+        with coluna_atual:
+            if st.button(label, key=f"btn_turma_{turma}", use_container_width=True):
+                st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
+                st.rerun()
+                
         if st.session_state.turmas_ativas.get(turma, True):
             turma_selecionada_filtros.append(turma)
+
+    # Botão ADM centralizado abaixo das duas colunas
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
+    adm_ativo = st.session_state.turmas_ativas.get("ADM", True)
+    adm_label = "ADM" if adm_ativo else "ADM (Off)"
+    
+    col_esq, col_centro, col_dir = st.sidebar.columns([1, 2, 1])
+    with col_centro:
+        if st.button(adm_label, key="btn_turma_ADM", use_container_width=True):
+            st.session_state.turmas_ativas["ADM"] = not st.session_state.turmas_ativas["ADM"]
+            st.rerun()
+            
+    if st.session_state.turmas_ativas.get("ADM", True):
+        turma_selecionada_filtros.append("ADM")
 
     # Filtro de Atividade
     atividades_disponiveis = df_os['ATIVIDADE'].dropna().unique().tolist() if 'ATIVIDADE' in df_os.columns else []
@@ -74,7 +91,6 @@ try:
     if turno_selecionado and 'TURNO' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['TURNO'].isin(turno_selecionado)]
     if turma_selecionada_filtros and 'TURMA' in df_filtrado.columns:
-        # Assegurar correspondência maiúscula para o filtro
         df_filtrado = df_filtrado[df_filtrado['TURMA'].astype(str).str.upper().isin(turma_selecionada_filtros)]
     if atividade_selecionada and 'ATIVIDADE' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['ATIVIDADE'].isin(atividade_selecionada)]
