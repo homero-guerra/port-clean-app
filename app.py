@@ -4,7 +4,7 @@ from datetime import datetime
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
+    page_title="Plano de Limpeza Industrial",
     page_icon="⚓",
     layout="wide"
 )
@@ -32,7 +32,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Título principal do painel alinhado no topo absoluto
-st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
+st.markdown("<h1>⚓ Plano de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
