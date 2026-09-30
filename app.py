@@ -9,18 +9,19 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS personalizada para os botões coloridos na barra lateral
+# Estilização CSS personalizada para colorir os botões de turmas na barra lateral
 st.markdown("""
 <style>
-    div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; }
-    div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; }
-    div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #e0e0e0 !important; color: #000 !important; font-weight: bold; }
-    div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; }
-    div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; }
+    /* Cores de fundo e texto personalizadas para os botões das turmas */
+    div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; border: 1px solid #e0a800; }
+    div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; border: 1px solid #0056b3; }
+    div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #f8f9fa !important; color: #212529 !important; font-weight: bold; border: 1px solid #dae0e5; }
+    div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; border: 1px solid #1e7e34; }
+    div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; border: 1px solid #545b62; }
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal atualizado
+# Título principal do painel
 st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
@@ -46,7 +47,7 @@ try:
     # ==========================================
     st.sidebar.header("🎛️ Filtros Operacionais")
     
-    # --- FILTRO POR TURNO (BOTÕES) ---
+    # --- FILTRO POR TURNO (COM SOL ☀️ E LUA 🌙) ---
     st.sidebar.markdown("### 🕒 Filtrar por Turno")
     turnos_disponiveis = [str(t).upper() for t in df_os['TURNO'].dropna().unique().tolist()] if 'TURNO' in df_os.columns else ["DIURNO", "NOTURNO"]
     turnos_disponiveis = sorted(list(set(turnos_disponiveis)))
@@ -57,9 +58,12 @@ try:
     turno_selecionado_filtros = []
     col_turno1, col_turno2 = st.sidebar.columns(2)
     
+    icones_turno = {"DIURNO": "☀️", "NOTURNO": "🌙"}
+    
     for i, turno in enumerate(turnos_disponiveis):
         ativo = st.session_state.turnos_ativos.get(turno, True)
-        label = f"🟢 {turno}" if ativo else f"⚪ {turno} (Off)"
+        icone = icones_turno.get(turno, "⏰")
+        label = f"{icone} {turno}" if ativo else f"⚪ {turno} (Off)"
         coluna_atual = col_turno1 if i % 2 == 0 else col_turno2
         
         with coluna_atual:
@@ -145,21 +149,37 @@ try:
     st.divider()
 
     # ==========================================
-    # SEÇÃO: PLANEJAMENTO DIÁRIO COM LAYOUT FEROPORT
+    # SEÇÃO: PLANEJAMENTO DIÁRIO OPERACIONAL (SEÇÕES DIURNO, ADM E NOTURNO)
     # ==========================================
     st.subheader("📋 Planejamento Diário Operacional")
-    st.markdown("Matriz automatizada alinhada ao modelo operacional com status de execução.")
+    st.markdown("Matriz automatizada dividida por turnos e equipas conforme o modelo operacional.")
 
-    dados_planeamento = [
+    # Dados de exemplo divididos para as secções
+    dados_diurno = [
         {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-08", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "Estado / Ação": "Agendado"},
         {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-09", "ATIVO": "3230TR02", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM GERAL DA ESTRUTURA INFERIOR DA TR ATÉ A CT5", "Estado / Ação": "Em Execução"},
-        {"ID": "03", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "09-10", "ATIVO": "CT00", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Pendente"},
-        {"ID": "04", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "10-11", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Planeado"},
-        {"ID": "05", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "19-20", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "Estado / Ação": "Agendado"},
-        {"ID": "06", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "20-21", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR DA CT + CANALETA DESAGUADORA", "Estado / Ação": "Em Execução"}
+        {"ID": "03", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "09-10", "ATIVO": "CT00", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Pendente"}
     ]
-    df_planeamento = pd.DataFrame(dados_planeamento)
-    st.dataframe(df_planeamento, use_container_width=True)
+
+    dados_adm = [
+        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": "22/09/2026", "HORA": "08-17", "ATIVO": "ESCAVADEIRA HIDRAULICA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL DAS CANALETAS", "Estado / Ação": "Em Execução"},
+        {"ID": "02", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": "22/09/2026", "HORA": "08-17", "ATIVO": "RETROESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "RETIRADA DE MATERIAL DOS PÍER/ PÁTIOS", "Estado / Ação": "Planeado"}
+    ]
+
+    dados_noturno = [
+        {"ID": "01", "TURMA": "BRANCA", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "19-20", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "Estado / Ação": "Agendado"},
+        {"ID": "02", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "20-21", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR DA CT + CANALETA DESAGUADORA", "Estado / Ação": "Em Execução"}
+    ]
+
+    # Exibir as 3 seções organizadas com expansores ou subcabeçalhos
+    st.markdown("### ☀️ Turno Diurno")
+    st.dataframe(pd.DataFrame(dados_diurno), use_container_width=True)
+
+    st.markdown("### 🏢 Turno Administrativo (ADM)")
+    st.dataframe(pd.DataFrame(dados_adm), use_container_width=True)
+
+    st.markdown("### 🌙 Turno Noturno")
+    st.dataframe(pd.DataFrame(dados_noturno), use_container_width=True)
 
     st.divider()
 
