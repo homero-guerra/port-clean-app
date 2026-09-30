@@ -9,12 +9,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS para otimizar a barra lateral e os elementos compactos
+# Estilização CSS para otimizar a barra lateral, aproximando o formulário do topo
 st.markdown("""
 <style>
     [data-testid="stSidebar"] {
         min-width: 420px !important;
         max-width: 460px !important;
+        padding-top: 0rem !important;
+    }
+    div[data-testid="stSidebarUserContent"] {
+        padding-top: 1rem !important;
     }
     div[data-testid="stButton"] button { font-weight: bold; }
 </style>
@@ -70,13 +74,12 @@ try:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO E INSERÇÃO DE ATIVIDADE
+    # BARRA LATERAL: MENU DE PLANEJAMENTO E INSERÇÃO
     # ==========================================
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### ➕ Inserir Atividade")
 
     with st.sidebar.form("form_inserir_atividade"):
         
@@ -88,7 +91,6 @@ try:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             abrir_cadastro = st.form_submit_button("➕")
 
-        # Se o botão "+" for acionado, mostramos os campos de registo logo abaixo num expander integrado
         if abrir_cadastro:
             st.session_state['mostrar_cadastro_chefe'] = not st.session_state.get('mostrar_cadastro_chefe', False)
 
@@ -141,7 +143,8 @@ try:
         else:
             ativo_extraido = "GERAL"
 
-        st.info(f"📌 **Ativo:** {ativo_extraido}\n\n**Desc:** {descricao_atividade}")
+        # Exibição limpa sem o emoji de fixador e sem o rótulo "Desc:"
+        st.info(f"**Ativo:** {ativo_extraido}\n\n{descricao_atividade}")
 
         botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
 
