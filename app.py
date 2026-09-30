@@ -9,14 +9,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS personalizada para os botões coloridos na barra lateral
+# Estilização CSS personalizada para os botões e áreas do planeamento
 st.markdown("""
 <style>
-    div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; border: 1px solid #e0a800; }
-    div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; border: 1px solid #0056b3; }
-    div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #f8f9fa !important; color: #212529 !important; font-weight: bold; border: 1px solid #dae0e5; }
-    div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; border: 1px solid #1e7e34; }
-    div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; border: 1px solid #545b62; }
+    div[data-testid="stButton"] button { font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -42,132 +38,129 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO
+    # GESTÃO DO ESTADO DA SESSÃO (GRUPOS DE PLANEJAMENTO)
     # ==========================================
-    st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
-    
-    # Stamp de Data (Calendário)
-    data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📋 Filtros de Parâmetros")
-
-    # Inicializar lista de chefes no session_state se não existir
     if 'lista_chefes' not in st.session_state:
         chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
         st.session_state.lista_chefes = sorted(list(set(chefes_iniciais)))
 
-    # Seleção de Chefe de Turno
-    chefe_selecionado = st.sidebar.selectbox("Chefe de Turno", options=["TODOS"] + st.session_state.lista_chefes)
+    if 'plano_operacional' not in st.session_state:
+        # Linhas iniciais pré-carregadas para demonstração imediata
+        st.session_state.plano_operacional = [
+            {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "STATUS": "Em Execução"},
+            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL", "STATUS": "Em Execução"},
+            {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
+        ]
 
-    # --- PROCEDIMENTO DE CADASTRO DE NOVO CHEFE DE TURNO ---
-    with st.sidebar.expander("➕ Cadastrar Novo Chefe de Turno"):
+    # Extrair atividades únicas da base sem duplicatas para o menu
+    if 'ATIVIDADE' in df_os.columns:
+        atividades_menu = sorted(df_os['ATIVIDADE'].dropna().astype(str).unique().tolist())
+    else:
+        atividades_menu = ["LAVAGEM DA MOTORIZAÇÃO DA TR", "LIMPEZA DO PISO INFERIOR", "RETIRADA DE MATERIAL"]
+
+    # ==========================================
+    # BARRA LATERAL: MENU DE CADASTRO E PARÂMETROS
+    # ==========================================
+    st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
+    
+    # Stamp de Data
+    data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ➕ Cadastro de Chefes")
+    with st.sidebar.expander("Novo Chefe de Turno"):
         novo_matricula = st.text_input("Matrícula")
         novo_nome = st.text_input("Nome Completo")
-        if st.button("Salvar Novo Chefe"):
+        if st.button("Salvar Chefe"):
             if novo_matricula and novo_nome:
                 novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
                 if novo_chefe_str not in st.session_state.lista_chefes:
                     st.session_state.lista_chefes.append(novo_chefe_str)
-                    st.success(f"Chefe {novo_chefe_str} cadastrado com sucesso!")
+                    st.success("Chefe cadastrado com sucesso!")
                     st.rerun()
                 else:
-                    st.warning("Este chefe já está cadastrado.")
+                    st.warning("Chefe já cadastrado.")
             else:
-                st.error("Preencha a Matrícula e o Nome.")
+                st.error("Preencha matrícula e nome.")
 
-    # Lista suspensa para Turno
-    turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else ["DIURNO", "NOTURNO", "ADM"]
-    turno_selecionado = st.sidebar.selectbox("Turno", options=["TODOS"] + sorted([str(t) for t in turnos_disponiveis]))
-
-    # Lista suspensa para Turma
-    turmas_disponiveis = df_os['TURMA'].dropna().unique().tolist() if 'TURMA' in df_os.columns else ["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"]
-    turma_selecionada = st.sidebar.selectbox("Turma", options=["TODOS"] + sorted([str(t) for t in turmas_disponiveis]))
-
-    # --- MENU DE ATIVIDADES (EXTRAÍDO DA BASE SEM DUPLICATAS) ---
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🔍 Seleção de Atividades")
+    st.sidebar.info("Utilize o formulário central para inserir atividades diretamente na grade de planejamento por turnos.")
+
+    # ==========================================
+    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
+    # ==========================================
+    st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
-    # Extrair atividades da base, limpando duplicatas
-    if 'ATIVIDADE' in df_os.columns:
-        atividades_unicas = sorted(df_os['ATIVIDADE'].dropna().astype(str).unique().tolist())
-    else:
-        atividades_unicas = ["LAVAGEM DA MOTORIZAÇÃO DA TR", "LIMPEZA DO PISO INFERIOR", "RETIRADA DE MATERIAL"]
+    with st.form("form_inserir_atividade"):
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
+            turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
+        with col_f2:
+            turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
+            ativo_form = st.text_input("Equipamento / Ativo (Ex: 3230TR02, CT01)", value="CT01")
+        with col_f3:
+            hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
+            hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
+
+        atividade_form = st.selectbox("Selecione a Atividade da Base", options=atividades_menu)
         
-    atividade_selecionada_menu = st.sidebar.selectbox("Buscar Atividade Planejada", options=["TODAS"] + atividades_unicas)
+        col_btn1, col_col2_btn = st.columns([1, 4])
+        with col_btn1:
+            botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano")
 
-    # Aplicação dos parâmetros de filtros ao DataFrame base
-    df_filtrado = df_os.copy()
-    if chefe_selecionado != "TODOS" and 'CHEFE_TURNO' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['CHEFE_TURNO'] == chefe_selecionado]
-    if turno_selecionado != "TODOS" and 'TURNO' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURNO'] == turno_selecionado]
-    if turma_selecionada != "TODOS" and 'TURMA' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURMA'] == turma_selecionada]
-    if atividade_selecionada_menu != "TODAS" and 'ATIVIDADE' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['ATIVIDADE'] == atividade_selecionada_menu]
-
-    st.sidebar.markdown("---")
-    st.sidebar.info(f"Mostrando {len(df_filtrado)} registos com base nos filtros.")
-
-    # ==========================================
-    # MÉTRICAS PRINCIPAIS EM CARDS
-    # ==========================================
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total de Ordens de Serviço", len(df_filtrado))
-    with col2:
-        num_atividades = df_filtrado["COD. ATIVIDADE"].nunique() if "COD. ATIVIDADE" in df_filtrado.columns else 0
-        st.metric("Atividades Únicas Mapeadas", num_atividades)
-    with col3:
-        st.metric("Data Stamp Ativa", data_stamp.strftime('%d/%m/%Y'))
-    with col4:
-        media_colab = round(df_filtrado["QTD. COLAB."].mean(), 1) if "QTD. COLAB." in df_filtrado.columns and not df_filtrado["QTD. COLAB."].dropna().empty else 0
-        st.metric("Média Colaboradores/OS", media_colab)
+        if botao_inserir:
+            novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
+            novo_registro = {
+                "ID": novo_id,
+                "TURMA": turma_form,
+                "CHEFE DE TURNO": chefe_form,
+                "TURNO": turno_form,
+                "DATA": data_stamp.strftime('%d/%m/%Y'),
+                "HORA INICIAL": hora_ini_form,
+                "HORA FINAL": hora_fim_form,
+                "ATIVO": ativo_form.upper(),
+                "Retirada NR12 ?": "NÃO",
+                "DADOS DA ATIVIDADE": atividade_form,
+                "STATUS": "Agendado"
+            }
+            st.session_state.plano_operacional.append(novo_registro)
+            st.success("Atividade adicionada com sucesso à grade!")
+            st.rerun()
 
     st.divider()
 
     # ==========================================
-    # CONSTRUÇÃO DINÂMICA DO PLANEJAMENTO DIÁRIO
+    # GRADES DE PLANEJAMENTO DIÁRIO (DIURNO, ADM, NOTURNO)
     # ==========================================
-    st.subheader("📋 Planejamento Diário Operacional")
-    st.markdown(f"**Data do Plano (Stamp):** {data_stamp.strftime('%d/%m/%Y')} | Matriz dinâmica baseada nos parâmetros operacionais.")
+    st.subheader("📋 Grade de Planejamento Diário Operacional")
+    st.markdown(f"**Data do Plano (Stamp Ativo):** {data_stamp.strftime('%d/%m/%Y')}")
 
-    # Base pré-programada que responde aos seletores
-    dados_base_planejamento = [
-        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "STATUS": "Em Execução"},
-        {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "09:00", "ATIVO": "3230TR02", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM GERAL DA ESTRUTURA INFERIOR DA TR ATÉ A CT5", "STATUS": "Agendado"},
-        {"ID": "03", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA HIDRAULICA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL", "STATUS": "Em Execução"},
-        {"ID": "04", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
+    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+
+    # Exibição organizada por Turnos em blocos dedicados
+    turnos_secoes = [
+        ("DIURNO", "☀️ Turno Diurno"),
+        ("ADM", "🏢 Turno Administrativo (ADM)"),
+        ("NOTURNO", "🌙 Turno Noturno")
     ]
 
-    df_plano = pd.DataFrame(dados_base_planejamento)
-
-    # Filtrar dinamicamente a tabela de planejamento com base nos seletores laterais
-    if chefe_selecionado != "TODOS":
-        df_plano = df_plano[df_plano['CHEFE DE TURNO'] == chefe_selecionado]
-    if turno_selecionado != "TODOS":
-        df_plano = df_plano[df_plano['TURNO'] == turno_selecionado]
-    if turma_selecionada != "TODOS":
-        df_plano = df_plano[df_plano['TURMA'] == turma_selecionada]
-    if atividade_selecionada_menu != "TODAS":
-        df_plano = df_plano[df_plano['DADOS DA ATIVIDADE'].str.contains(atividade_selecionada_menu, case=False, na=False)]
-
-    # Exibição dividida pelas 3 seções exigidas
-    for t_sec in ["DIURNO", "ADM", "NOTURNO"]:
-        df_sec = df_plano[df_plano['TURNO'] == t_sec]
-        if not df_sec.empty:
-            icones_sec = {"DIURNO": "☀️ Turno Diurno", "ADM": "🏢 Turno Administrativo (ADM)", "NOTURNO": "🌙 Turno Noturno"}
-            st.markdown(f"### {icones_sec.get(t_sec, t_sec)}")
-            st.dataframe(df_sec, use_container_width=True)
+    for codigo_turno, titulo_turno in turnos_secoes:
+        st.markdown(f"### {titulo_turno}")
+        df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
+        
+        if not df_turno_atual.empty:
+            st.dataframe(df_turno_atual, use_container_width=True)
+        else:
+            st.info(f"Nenhuma atividade programada para o {titulo_turno.lower()}. Utilize o formulário acima para adicionar.")
 
     st.divider()
 
     # ==========================================
-    # SEÇÃO DE VISUALIZAÇÃO DOS DADOS BRUTOS
+    # SEÇÃO DE VISUALIZAÇÃO DOS DADOS BRUTOS DA BASE
     # ==========================================
-    st.subheader("📑 Base de Ordens de Serviço Processadas")
-    st.dataframe(df_filtrado.head(100), use_container_width=True)
+    st.subheader("📑 Base de Ordens de Serviço Processadas (Referência)")
+    st.dataframe(df_os.head(50), use_container_width=True)
 
 except Exception as e:
-    st.error(f"Erro ao carregar os dados: {e}")
+    st.error(f"Erro ao carregar o sistema: {e}")
