@@ -98,17 +98,14 @@ try:
     # ==========================================
     # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
     # ==========================================
-    # Cabeçalho integrado com o título e o botão de ação lado a lado
     col_tit, col_btn_top = st.columns([3, 1])
     with col_tit:
         st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
     with st.form("form_inserir_atividade"):
-        # Botão de submissão posicionado no topo ao lado do título (através de flag ou submissão direta no form)
         with col_btn_top:
-            st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
-            botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
-
+            pass # Espaço reservado para alinhamento do botão principal dentro do form
+            
         # 5 colunas exatas na mesma linha
         col1, col2, col3, col4, col5 = st.columns(5)
         
@@ -147,6 +144,9 @@ try:
 
         st.info(f"📌 **Ativo Vinculado:** {ativo_extraido} | **Descrição:** {descricao_atividade}")
 
+        # Botão de submissão posicionado estruturalmente dentro do formulário
+        botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
+
         if botao_inserir:
             novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
             novo_registro = {
@@ -184,7 +184,6 @@ try:
 
     for codigo_turno, titulo_turno in turnos_secoes:
         st.markdown(f"### {titulo_turno}")
-        # Exibe as grades correspondentes direcionadas de forma dinâmica
         df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
         
         if not df_turno_atual.empty:
