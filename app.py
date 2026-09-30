@@ -49,7 +49,8 @@ try:
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = [
             {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR04.3] LAVAGEM DA MOTORIZAÇÃO DA TR", "STATUS": "Em Execução"},
-            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "CT08", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"}
+            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "CT08", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"},
+            {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR05.4] LAVAGEM DA MOTORIZAÇÃO", "STATUS": "Pendente"}
         ]
 
     # Identificar colunas exatas na base
@@ -57,7 +58,7 @@ try:
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
     col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
 
-    # Criar lista única e consolidada (sem duplicações) combinando Código + Descrição para consulta imediata via clique
+    # Criar lista única e consolidada (sem duplicações) combinando Código + Descrição
     if col_cod in df_os.columns and col_desc in df_os.columns:
         df_unicos = df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
         lista_opcoes_atividades = sorted([f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()])
@@ -141,7 +142,7 @@ try:
                 "ID": novo_id,
                 "TURMA": turma_form,
                 "CHEFE DE TURNO": chefe_form,
-                "TURNO": turno_form,
+                "TURNO": turno_form,  # Turno selecionado dita o bloco de destino
                 "DATA": data_stamp.strftime('%d/%m/%Y'),
                 "HORA INICIAL": hora_ini_form,
                 "HORA FINAL": hora_fim_form,
@@ -151,7 +152,7 @@ try:
                 "STATUS": "Agendado"
             }
             st.session_state.plano_operacional.append(novo_registro)
-            st.success("Atividade adicionada com sucesso à grade!")
+            st.success(f"Atividade adicionada com sucesso ao Turno {turno_form}!")
             st.rerun()
 
     st.divider()
@@ -172,6 +173,7 @@ try:
 
     for codigo_turno, titulo_turno in turnos_secoes:
         st.markdown(f"### {titulo_turno}")
+        # Filtra e direciona estritamente para o bloco correspondente ao turno selecionado
         df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
         
         if not df_turno_atual.empty:
