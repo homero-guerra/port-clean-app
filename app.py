@@ -4,28 +4,24 @@ from datetime import datetime
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="PortClean AutoPlanner - Gestão de Limpeza Industrial",
+    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
     page_icon="⚓",
     layout="wide"
 )
 
-# Estilização CSS personalizada para colorir os botões de turmas e turnos
+# Estilização CSS personalizada para os botões coloridos na barra lateral
 st.markdown("""
 <style>
-    /* Cores personalizadas para os botões de turmas ativos */
     div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; }
     div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; }
     div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #e0e0e0 !important; color: #000 !important; font-weight: bold; }
     div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; }
     div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; }
-    
-    /* Cores para os botões de turno */
-    div[data-testid="stButton"] button[key*="btn_turno_"] { font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel
-st.markdown("<h1>⚓ PortClean AutoPlanner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
+# Título principal atualizado
+st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
@@ -149,16 +145,18 @@ try:
     st.divider()
 
     # ==========================================
-    # SEÇÃO: PLANEJAMENTO DIÁRIO BASEADO NO HISTÓRICO
+    # SEÇÃO: PLANEJAMENTO DIÁRIO COM LAYOUT FEROPORT
     # ==========================================
-    st.subheader("📋 Planejamento Diário Operacional (Baseado no Histórico de Frequência)")
-    st.markdown("Matriz automatizada de prioridades para atribuição de turmas e turnos nas frentes críticas de granéis sólidos.")
+    st.subheader("📋 Planejamento Diário Operacional")
+    st.markdown("Matriz automatizada alinhada ao modelo operacional com status de execução.")
 
     dados_planeamento = [
-        {"Prioridade": "Alta", "Equipamento / Área": "3230TR02 - Calda", "Atividade Discriminada": "Lavagem da Estrutura da Calda", "Frequência Média": "A cada 7 dias", "Turno Sugerido": "Noturno", "Turma Alocada": "Branca", "Estado / Ação": "Agendado"},
-        {"Prioridade": "Alta", "Equipamento / Área": "3230TR02.2 - Balança", "Atividade Discriminada": "Limpeza e Lavagem Geral", "Frequência Média": "A cada 14 dias", "Turno Sugerido": "Diurno", "Turma Alocada": "Verde", "Estado / Ação": "Em Execução"},
-        {"Prioridade": "Média", "Equipamento / Área": "CT04 - Turn-over de Cauda", "Atividade Discriminada": "Remoção de Material Acumulado", "Frequência Média": "A cada 10 dias", "Turno Sugerido": "Diurno", "Turma Alocada": "Azul", "Estado / Ação": "Pendente"},
-        {"Prioridade": "Média", "Equipamento / Área": "Pátio de Correias", "Atividade Discriminada": "Raspagem de Piso e Resíduos", "Frequência Média": "Diário", "Turno Sugerido": "Noturno", "Turma Alocada": "Amarela", "Estado / Ação": "Planeado"}
+        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-08", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "Estado / Ação": "Agendado"},
+        {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-09", "ATIVO": "3230TR02", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM GERAL DA ESTRUTURA INFERIOR DA TR ATÉ A CT5", "Estado / Ação": "Em Execução"},
+        {"ID": "03", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "09-10", "ATIVO": "CT00", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Pendente"},
+        {"ID": "04", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "10-11", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Planeado"},
+        {"ID": "05", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "19-20", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "Estado / Ação": "Agendado"},
+        {"ID": "06", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "20-21", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR DA CT + CANALETA DESAGUADORA", "Estado / Ação": "Em Execução"}
     ]
     df_planeamento = pd.DataFrame(dados_planeamento)
     st.dataframe(df_planeamento, use_container_width=True)
