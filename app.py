@@ -52,12 +52,17 @@ try:
             {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "CT08", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"}
         ]
 
-    # Obter lista de COD. ATIVIDADE simulando consulta SQL distinta (SELECT DISTINCT COD. ATIVIDADE)
-    col_cod = 'COD. ATIVIDADE'
-    if col_cod in df_os.columns:
-        lista_cod_atividades = sorted(df_os[col_cod].dropna().astype(str).unique().tolist())
+    # Identificar colunas exatas na base
+    col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
+    col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
+    col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
+
+    # Criar lista única e consolidada (sem duplicações) combinando Código + Descrição para consulta imediata via clique
+    if col_cod in df_os.columns and col_desc in df_os.columns:
+        df_unicos = df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
+        lista_opcoes_atividades = sorted([f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()])
     else:
-        lista_cod_atividades = ["3220TR04.3", "3220TR05.4", "CT08.4", "CT00.7", "CT01.5", "EP02.1"]
+        lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
     # BARRA LATERAL: MENU DE CADASTRO
@@ -83,12 +88,12 @@ try:
                 st.error("Preencha matrícula e nome.")
 
     # ==========================================
-    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO REESTRUTURADO)
+    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
     # ==========================================
     st.subheader("➕ Inserir Nova Atividade no Planejamento")
     
     with st.form("form_inserir_atividade"):
-        # 5 colunas exatas na mesma linha conforme solicitado
+        # 5 colunas exatas na mesma linha
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -104,27 +109,27 @@ try:
 
         st.markdown("---")
         
-        # Campo de COD. ATIVIDADE na linha abaixo com consulta SQL simulada por seleção de clique
-        cod_atividade_escolhido = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_cod_atividades)
+        # Campo COD. ATIVIDADE consolidado sem duplicações com descrição visível para consulta
+        opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE (Consulta e Seleção por Clique)", options=lista_opcoes_atividades)
 
-        # Consulta SQL para recuperar a descrição exata e o ativo correspondente ao código selecionado
-        col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
-        col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
-        
-        if col_cod in df_os.columns:
-            # Consulta estilo SQL filtrando o DataFrame da base
+        # Separar o código e a descrição da opção escolhida
+        if " - " in opcao_selecionada:
+            cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
+        else:
+            cod_atividade_escolhido = opcao_selecionada
+            descricao_atividade = "Atividade Operacional Registrada"
+
+        # Obter o ativo correspondente via consulta simulada (SQL lookup)
+        if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
             if not resultado_sql.empty:
-                descricao_atividade = resultado_sql[col_desc].iloc[0]
-                ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper() if col_ativo in df_os.columns else "GERAL"
+                ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper()
             else:
-                descricao_atividade = "Atividade Operacional Registrada"
                 ativo_extraido = "GERAL"
         else:
-            descricao_atividade = "Limpeza Industrial"
             ativo_extraido = "GERAL"
 
-        st.info(f"📌 **Descrição da Atividade Vinculada:** {descricao_atividade}")
+        st.info(f"📌 **Ativo Vinculado:** {ativo_extraido} | **Descrição:** {descricao_atividade}")
         
         col_btn1, col_col2_btn = st.columns([1, 4])
         with col_btn1:
