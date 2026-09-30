@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, time
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -8,18 +8,6 @@ st.set_page_config(
     page_icon="⚓",
     layout="wide"
 )
-
-# Estilização CSS personalizada para colorir os botões de turmas na barra lateral
-st.markdown("""
-<style>
-    /* Cores de fundo e texto personalizadas para os botões das turmas */
-    div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; border: 1px solid #e0a800; }
-    div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; border: 1px solid #0056b3; }
-    div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #f8f9fa !important; color: #212529 !important; font-weight: bold; border: 1px solid #dae0e5; }
-    div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; border: 1px solid #1e7e34; }
-    div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; border: 1px solid #545b62; }
-</style>
-""", unsafe_allow_html=True)
 
 # Título principal do painel
 st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
@@ -43,92 +31,39 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # BARRA LATERAL: FILTROS POR BOTÕES
+    # BARRA LATERAL: PARÂMETROS E FILTROS EM LISTAS SUSPENSAS
     # ==========================================
-    st.sidebar.header("🎛️ Filtros Operacionais")
+    st.sidebar.header("🎛️ Parâmetros do Planejamento")
     
-    # --- FILTRO POR TURNO (COM SOL ☀️ E LUA 🌙) ---
-    st.sidebar.markdown("### 🕒 Filtrar por Turno")
-    turnos_disponiveis = [str(t).upper() for t in df_os['TURNO'].dropna().unique().tolist()] if 'TURNO' in df_os.columns else ["DIURNO", "NOTURNO"]
-    turnos_disponiveis = sorted(list(set(turnos_disponiveis)))
+    # Stamp de Data (Calendário)
+    data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
-    if 'turnos_ativos' not in st.session_state:
-        st.session_state.turnos_ativos = {turno: True for turno in turnos_disponiveis}
-
-    turno_selecionado_filtros = []
-    col_turno1, col_turno2 = st.sidebar.columns(2)
-    
-    icones_turno = {"DIURNO": "☀️", "NOTURNO": "🌙"}
-    
-    for i, turno in enumerate(turnos_disponiveis):
-        ativo = st.session_state.turnos_ativos.get(turno, True)
-        icone = icones_turno.get(turno, "⏰")
-        label = f"{icone} {turno}" if ativo else f"⚪ {turno} (Off)"
-        coluna_atual = col_turno1 if i % 2 == 0 else col_turno2
-        
-        with coluna_atual:
-            if st.button(label, key=f"btn_turno_{turno}", use_container_width=True):
-                st.session_state.turnos_ativos[turno] = not st.session_state.turnos_ativos[turno]
-                st.rerun()
-                
-        if st.session_state.turnos_ativos.get(turno, True):
-            turno_selecionado_filtros.append(turno)
-
-    # --- FILTRO POR TURMA (BOTÕES COLORIDOS EM DUAS COLUNAS + ADM ABAIXO) ---
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🏷️ Filtro por Turma")
-    
-    turmas_principais = ["AMARELA", "AZUL", "BRANCA", "VERDE"]
+    st.sidebar.markdown("### 📋 Filtros de Parâmetros")
 
-    if 'turmas_ativas' not in st.session_state:
-        st.session_state.turmas_ativas = {turma: True for turma in turmas_principais + ["ADM"]}
+    # Lista suspensa para Chefe de Turno
+    chefes_disponiveis = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
+    chefe_selecionado = st.sidebar.selectbox("Chefe de Turno", options=["TODOS"] + chefes_disponiveis)
 
-    turma_selecionada_filtros = []
-    col_t1, col_t2 = st.sidebar.columns(2)
+    # Lista suspensa para Turno
+    turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else ["DIURNO", "NOTURNO", "ADM"]
+    turno_selecionado = st.sidebar.selectbox("Turno", options=["TODOS"] + turnos_disponiveis)
 
-    for i, turma in enumerate(turmas_principais):
-        ativo = st.session_state.turmas_ativas.get(turma, True)
-        label = f"{turma}" if ativo else f"{turma} (Off)"
-        coluna_atual = col_t1 if i % 2 == 0 else col_t2
-        
-        with coluna_atual:
-            if st.button(label, key=f"btn_turma_{turma}", use_container_width=True):
-                st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
-                st.rerun()
-                
-        if st.session_state.turmas_ativas.get(turma, True):
-            turma_selecionada_filtros.append(turma)
+    # Lista suspensa para Turma
+    turmas_disponiveis = df_os['TURMA'].dropna().unique().tolist() if 'TURMA' in df_os.columns else ["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"]
+    turma_selecionada = st.sidebar.selectbox("Turma", options=["TODOS"] + turmas_disponiveis)
 
-    # Botão ADM centralizado abaixo
-    st.sidebar.markdown("<br>", unsafe_allow_html=True)
-    adm_ativo = st.session_state.turmas_ativas.get("ADM", True)
-    adm_label = "ADM" if adm_ativo else "ADM (Off)"
-    
-    col_esq, col_centro, col_dir = st.sidebar.columns([1, 2, 1])
-    with col_centro:
-        if st.button(adm_label, key="btn_turma_ADM", use_container_width=True):
-            st.session_state.turmas_ativas["ADM"] = not st.session_state.turmas_ativas["ADM"]
-            st.rerun()
-            
-    if st.session_state.turmas_ativas.get("ADM", True):
-        turma_selecionada_filtros.append("ADM")
-
-    # Filtro de Atividade
-    st.sidebar.markdown("---")
-    atividades_disponiveis = df_os['ATIVIDADE'].dropna().unique().tolist() if 'ATIVIDADE' in df_os.columns else []
-    atividade_selecionada = st.sidebar.multiselect("Filtrar por Atividade", options=atividades_disponiveis)
-
-    # Aplicação dos filtros ao DataFrame
+    # Aplicação dos parâmetros de filtros ao DataFrame base
     df_filtrado = df_os.copy()
-    if turno_selecionado_filtros and 'TURNO' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURNO'].astype(str).str.upper().isin(turno_selecionado_filtros)]
-    if turma_selecionada_filtros and 'TURMA' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURMA'].astype(str).str.upper().isin(turma_selecionada_filtros)]
-    if atividade_selecionada and 'ATIVIDADE' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['ATIVIDADE'].isin(atividade_selecionada)]
+    if chefe_selecionado != "TODOS" and 'CHEFE_TURNO' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['CHEFE_TURNO'] == chefe_selecionado]
+    if turno_selecionado != "TODOS" and 'TURNO' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['TURNO'] == turno_selecionado]
+    if turma_selecionada != "TODOS" and 'TURMA' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['TURMA'] == turma_selecionada]
 
     st.sidebar.markdown("---")
-    st.sidebar.info(f"Mostrando {len(df_filtrado)} de {len(df_os)} registos após os filtros.")
+    st.sidebar.info(f"Mostrando {len(df_filtrado)} registos com base nos parâmetros selecionados.")
 
     # ==========================================
     # MÉTRICAS PRINCIPAIS EM CARDS
@@ -140,8 +75,7 @@ try:
         num_atividades = df_filtrado["COD. ATIVIDADE"].nunique() if "COD. ATIVIDADE" in df_filtrado.columns else 0
         st.metric("Atividades Únicas Mapeadas", num_atividades)
     with col3:
-        ano_max = int(df_filtrado['DATA_INICIO_DT'].dt.year.max()) if 'DATA_INICIO_DT' in df_filtrado.columns and not df_filtrado['DATA_INICIO_DT'].dropna().empty else datetime.now().year
-        st.metric("Período Analisado", ano_max)
+        st.metric("Data Stamp Ativa", data_stamp.strftime('%d/%m/%Y'))
     with col4:
         media_colab = round(df_filtrado["QTD. COLAB."].mean(), 1) if "QTD. COLAB." in df_filtrado.columns and not df_filtrado["QTD. COLAB."].dropna().empty else 0
         st.metric("Média Colaboradores/OS", media_colab)
@@ -149,37 +83,36 @@ try:
     st.divider()
 
     # ==========================================
-    # SEÇÃO: PLANEJAMENTO DIÁRIO OPERACIONAL (SEÇÕES DIURNO, ADM E NOTURNO)
+    # CONSTRUÇÃO DINÂMICA DO PLANEJAMENTO DIÁRIO
     # ==========================================
-    st.subheader("📋 Planejamento Diário Operacional")
-    st.markdown("Matriz automatizada dividida por turnos e equipas conforme o modelo operacional.")
+    st.subheader("📋 Planejamento Diário Operacional Dinâmico")
+    st.markdown(f"**Data do Plano (Stamp):** {data_stamp.strftime('%d/%m/%Y')} | Matriz gerada a partir dos parâmetros operacionais.")
 
-    # Dados de exemplo divididos para as secções
-    dados_diurno = [
-        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-08", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "Estado / Ação": "Agendado"},
-        {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "07-09", "ATIVO": "3230TR02", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM GERAL DA ESTRUTURA INFERIOR DA TR ATÉ A CT5", "Estado / Ação": "Em Execução"},
-        {"ID": "03", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": "22/09/2026", "HORA": "09-10", "ATIVO": "CT00", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR + CANALETA DESAGUADORA", "Estado / Ação": "Pendente"}
+    # Base pré-programada que responde aos seletores da barra lateral
+    dados_base_planejamento = [
+        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER DA TR", "STATUS": "Em Execução"},
+        {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "09:00", "ATIVO": "3230TR02", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM GERAL DA ESTRUTURA INFERIOR DA TR ATÉ A CT5", "STATUS": "Agendado"},
+        {"ID": "03", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "ESCAVADEIRA HIDRAULICA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL", "STATUS": "Em Execução"},
+        {"ID": "04", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": data_stamp.strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "STATUS": "Pendente"}
     ]
 
-    dados_adm = [
-        {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": "22/09/2026", "HORA": "08-17", "ATIVO": "ESCAVADEIRA HIDRAULICA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "CONTINUAR RECHEGO NA A4 + RETIRADA DE MATERIAL DAS CANALETAS", "Estado / Ação": "Em Execução"},
-        {"ID": "02", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": "22/09/2026", "HORA": "08-17", "ATIVO": "RETROESCAVADEIRA", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "RETIRADA DE MATERIAL DOS PÍER/ PÁTIOS", "Estado / Ação": "Planeado"}
-    ]
+    df_plano = pd.DataFrame(dados_base_planejamento)
 
-    dados_noturno = [
-        {"ID": "01", "TURMA": "BRANCA", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "19-20", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LAVAGEM DA MOTORIZAÇÃO DA TR + TURN-OVER", "Estado / Ação": "Agendado"},
-        {"ID": "02", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": "22/09/2026", "HORA": "20-21", "ATIVO": "CT01", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "LIMPEZA DO PISO INFERIOR DA CT + CANALETA DESAGUADORA", "Estado / Ação": "Em Execução"}
-    ]
+    # Filtrar dinamicamente a tabela de planejamento com base nos seletores laterais
+    if chefe_selecionado != "TODOS":
+        df_plano = df_plano[df_plano['CHEFE DE TURNO'] == chefe_selecionado]
+    if turno_selecionado != "TODOS":
+        df_plano = df_plano[df_plano['TURNO'] == turno_selecionado]
+    if turma_selecionada != "TODOS":
+        df_plano = df_plano[df_plano['TURMA'] == turma_selecionada]
 
-    # Exibir as 3 seções organizadas com expansores ou subcabeçalhos
-    st.markdown("### ☀️ Turno Diurno")
-    st.dataframe(pd.DataFrame(dados_diurno), use_container_width=True)
-
-    st.markdown("### 🏢 Turno Administrativo (ADM)")
-    st.dataframe(pd.DataFrame(dados_adm), use_container_width=True)
-
-    st.markdown("### 🌙 Turno Noturno")
-    st.dataframe(pd.DataFrame(dados_noturno), use_container_width=True)
+    # Exibição dividida por secções de Turno para clareza operacional
+    for t_sec in ["DIURNO", "ADM", "NOTURNO"]:
+        df_sec = df_plano[df_plano['TURNO'] == t_sec]
+        if not df_sec.empty:
+            icones_sec = {"DIURNO": "☀️ Diurno", "ADM": "🏢 Administrativo (ADM)", "NOTURNO": "🌙 Noturno"}
+            st.markdown(f"### {icones_sec.get(t_sec, t_sec)}")
+            st.dataframe(df_sec, use_container_width=True)
 
     st.divider()
 
