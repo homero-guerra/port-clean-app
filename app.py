@@ -9,6 +9,21 @@ st.set_page_config(
     layout="wide"
 )
 
+# Estilização CSS personalizada para colorir os botões de turmas e turnos
+st.markdown("""
+<style>
+    /* Cores personalizadas para os botões de turmas ativos */
+    div[data-testid="stButton"] button[key*="btn_turma_AMARELA"] { background-color: #ffc107 !important; color: #000 !important; font-weight: bold; }
+    div[data-testid="stButton"] button[key*="btn_turma_AZUL"] { background-color: #007bff !important; color: #fff !important; font-weight: bold; }
+    div[data-testid="stButton"] button[key*="btn_turma_BRANCA"] { background-color: #e0e0e0 !important; color: #000 !important; font-weight: bold; }
+    div[data-testid="stButton"] button[key*="btn_turma_VERDE"] { background-color: #28a745 !important; color: #fff !important; font-weight: bold; }
+    div[data-testid="stButton"] button[key*="btn_turma_ADM"] { background-color: #6c757d !important; color: #fff !important; font-weight: bold; }
+    
+    /* Cores para os botões de turno */
+    div[data-testid="stButton"] button[key*="btn_turno_"] { font-weight: bold; }
+</style>
+""", unsafe_allow_html=True)
+
 # Título principal do painel
 st.markdown("<h1>⚓ PortClean AutoPlanner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
@@ -31,35 +46,51 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # BARRA LATERAL: FILTROS DINÂMICOS & BOTÕES DE TURMAS
+    # BARRA LATERAL: FILTROS POR BOTÕES
     # ==========================================
     st.sidebar.header("🎛️ Filtros Operacionais")
     
-    # Filtro de Turno
-    turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else []
-    turno_selecionado = st.sidebar.multiselect("Filtrar por Turno", options=turnos_disponiveis, default=turnos_disponiveis)
+    # --- FILTRO POR TURNO (BOTÕES) ---
+    st.sidebar.markdown("### 🕒 Filtrar por Turno")
+    turnos_disponiveis = [str(t).upper() for t in df_os['TURNO'].dropna().unique().tolist()] if 'TURNO' in df_os.columns else ["DIURNO", "NOTURNO"]
+    turnos_disponiveis = sorted(list(set(turnos_disponiveis)))
 
-    # Gestão do Filtro por Turmas
+    if 'turnos_ativos' not in st.session_state:
+        st.session_state.turnos_ativos = {turno: True for turno in turnos_disponiveis}
+
+    turno_selecionado_filtros = []
+    col_turno1, col_turno2 = st.sidebar.columns(2)
+    
+    for i, turno in enumerate(turnos_disponiveis):
+        ativo = st.session_state.turnos_ativos.get(turno, True)
+        label = f"🟢 {turno}" if ativo else f"⚪ {turno} (Off)"
+        coluna_atual = col_turno1 if i % 2 == 0 else col_turno2
+        
+        with coluna_atual:
+            if st.button(label, key=f"btn_turno_{turno}", use_container_width=True):
+                st.session_state.turnos_ativos[turno] = not st.session_state.turnos_ativos[turno]
+                st.rerun()
+                
+        if st.session_state.turnos_ativos.get(turno, True):
+            turno_selecionado_filtros.append(turno)
+
+    # --- FILTRO POR TURMA (BOTÕES COLORIDOS EM DUAS COLUNAS + ADM ABAIXO) ---
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🏷️ Filtro por Turma")
     
-    turmas_base = ["AMARELA", "AZUL", "BRANCA", "VERDE", "ADM"]
+    turmas_principais = ["AMARELA", "AZUL", "BRANCA", "VERDE"]
 
-    # Inicializar estado dos filtros de turmas
     if 'turmas_ativas' not in st.session_state:
-        st.session_state.turmas_ativas = {turma: True for turma in turmas_base}
+        st.session_state.turmas_ativas = {turma: True for turma in turmas_principais + ["ADM"]}
 
     turma_selecionada_filtros = []
-
-    # Organizar as 4 turmas principais em duas colunas na barra lateral
     col_t1, col_t2 = st.sidebar.columns(2)
-    turmas_principais = ["AMARELA", "AZUL", "BRANCA", "VERDE"]
 
     for i, turma in enumerate(turmas_principais):
         ativo = st.session_state.turmas_ativas.get(turma, True)
         label = f"{turma}" if ativo else f"{turma} (Off)"
-        
         coluna_atual = col_t1 if i % 2 == 0 else col_t2
+        
         with coluna_atual:
             if st.button(label, key=f"btn_turma_{turma}", use_container_width=True):
                 st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
@@ -68,7 +99,7 @@ try:
         if st.session_state.turmas_ativas.get(turma, True):
             turma_selecionada_filtros.append(turma)
 
-    # Botão ADM centralizado abaixo das duas colunas
+    # Botão ADM centralizado abaixo
     st.sidebar.markdown("<br>", unsafe_allow_html=True)
     adm_ativo = st.session_state.turmas_ativas.get("ADM", True)
     adm_label = "ADM" if adm_ativo else "ADM (Off)"
@@ -83,13 +114,14 @@ try:
         turma_selecionada_filtros.append("ADM")
 
     # Filtro de Atividade
+    st.sidebar.markdown("---")
     atividades_disponiveis = df_os['ATIVIDADE'].dropna().unique().tolist() if 'ATIVIDADE' in df_os.columns else []
     atividade_selecionada = st.sidebar.multiselect("Filtrar por Atividade", options=atividades_disponiveis)
 
     # Aplicação dos filtros ao DataFrame
     df_filtrado = df_os.copy()
-    if turno_selecionado and 'TURNO' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURNO'].isin(turno_selecionado)]
+    if turno_selecionado_filtros and 'TURNO' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['TURNO'].astype(str).str.upper().isin(turno_selecionado_filtros)]
     if turma_selecionada_filtros and 'TURMA' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['TURMA'].astype(str).str.upper().isin(turma_selecionada_filtros)]
     if atividade_selecionada and 'ATIVIDADE' in df_filtrado.columns:
