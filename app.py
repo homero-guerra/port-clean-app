@@ -11,31 +11,27 @@ st.set_page_config(
 
 # Título principal do painel
 st.markdown("<h1>⚓ PortClean AutoPlanner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planeamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #a0a0a0;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
     try:
-        # Tenta ler com ponto e vírgula (padrão comum em exportações PT)
         df = pd.read_csv(caminho_arquivo, sep=';', encoding='utf-8', low_memory=False)
         if len(df.columns) <= 1:
             df = pd.read_csv(caminho_arquivo, sep=',', encoding='utf-8', low_memory=False)
     except:
-        # Fallback para detecção automática por motor Python
         df = pd.read_csv(caminho_arquivo, sep=None, engine='python', encoding='utf-8')
         
-    # Tratamento de datas se existirem colunas correspondentes
     if 'DATA_INICIO_DT' in df.columns:
         df['DATA_INICIO_DT'] = pd.to_datetime(df['DATA_INICIO_DT'], errors='coerce')
     return df
 
 try:
-    # Carregamento da base de dados da Ferroport
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # BARRA LATERAL: FILTROS DINÂMICOS
+    # BARRA LATERAL: FILTROS DINÂMICOS & TAGS DE TURMAS
     # ==========================================
     st.sidebar.header("🎛️ Filtros Operacionais")
     
@@ -43,9 +39,38 @@ try:
     turnos_disponiveis = df_os['TURNO'].dropna().unique().tolist() if 'TURNO' in df_os.columns else []
     turno_selecionado = st.sidebar.multiselect("Filtrar por Turno", options=turnos_disponiveis, default=turnos_disponiveis)
 
-    # Filtro de Turma
-    turmas_disponiveis = df_os['TURMA'].dropna().unique().tolist() if 'TURMA' in df_os.columns else []
-    turma_selecionada = st.sidebar.multiselect("Filtrar por Turma", options=turmas_disponiveis, default=turmas_disponiveis)
+    # Cores associadas às turmas para os botões/tags
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🏷️ Filtro por Turma (Tags)")
+    
+    turmas_disponiveis = df_os['TURMA'].dropna().unique().tolist() if 'TURMA' in df_os.columns else ["BRANCA", "VERDE", "AZUL", "AMARELA"]
+    
+    # Inicializar estado dos filtros de turmas se não existir
+    if 'turmas_ativas' not in st.session_state:
+        st.session_state.turmas_ativas = {turma: True for turma in turmas_disponiveis}
+
+    # Estilos visuais personalizados por cor de turma
+    cores_turmas = {
+        "BRANCA": "#f0f2f6",
+        "VERDE": "#28a745",
+        "AZUL": "#007bff",
+        "AMARELA": "#ffc107"
+    }
+
+    # Criar botões estilo tag interativos na barra lateral
+    turma_selecionada_filtros = []
+    for turma in turmas_disponiveis:
+        cor = cores_turmas.get(str(turma).upper(), "#6c757d")
+        # Botão que alterna o estado do filtro ao ser clicado
+        ativo = st.session_state.turmas_ativas.get(turma, True)
+        label = f"🟢 [{turma}]" if ativo else f"⚪ [{turma} (Oculto)]"
+        
+        if st.sidebar.button(f"Turma: {turma}", key=f"btn_turma_{turma}"):
+            st.session_state.turmas_ativas[turma] = not st.session_state.turmas_ativas[turma]
+            st.rerun()
+            
+        if st.session_state.turmas_ativas.get(turma, True):
+            turma_selecionada_filtros.append(turma)
 
     # Filtro de Atividade
     atividades_disponiveis = df_os['ATIVIDADE'].dropna().unique().tolist() if 'ATIVIDADE' in df_os.columns else []
@@ -55,8 +80,8 @@ try:
     df_filtrado = df_os.copy()
     if turno_selecionado and 'TURNO' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['TURNO'].isin(turno_selecionado)]
-    if turma_selecionada and 'TURMA' in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado['TURMA'].isin(turma_selecionada)]
+    if turma_selecionada_filtros and 'TURMA' in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado['TURMA'].isin(turma_selecionada_filtros)]
     if atividade_selecionada and 'ATIVIDADE' in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado['ATIVIDADE'].isin(atividade_selecionada)]
 
@@ -82,12 +107,11 @@ try:
     st.divider()
 
     # ==========================================
-    # SEÇÃO: PLANEAMENTO DIÁRIO BASEADO NO HISTÓRICO
+    # SEÇÃO: PLANEJAMENTO DIÁRIO BASEADO NO HISTÓRICO
     # ==========================================
-    st.subheader("📋 Planeamento Diário Operacional (Baseado no Histórico de Frequência)")
+    st.subheader("📋 Planejamento Diário Operacional (Baseado no Histórico de Frequência)")
     st.markdown("Matriz automatizada de prioridades para atribuição de turmas e turnos nas frentes críticas de granéis sólidos.")
 
-    # Tabela de Planeamento Estruturada
     dados_planeamento = [
         {"Prioridade": "Alta", "Equipamento / Área": "3230TR02 - Calda", "Atividade Discriminada": "Lavagem da Estrutura da Calda", "Frequência Média": "A cada 7 dias", "Turno Sugerido": "Noturno", "Turma Alocada": "Branca", "Estado / Ação": "Agendado"},
         {"Prioridade": "Alta", "Equipamento / Área": "3230TR02.2 - Balança", "Atividade Discriminada": "Limpeza e Lavagem Geral", "Frequência Média": "A cada 14 dias", "Turno Sugerido": "Diurno", "Turma Alocada": "Verde", "Estado / Ação": "Em Execução"},
