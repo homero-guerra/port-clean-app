@@ -9,13 +9,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS para alargar o bloco lateral esquerdo e otimizar o layout
+# Estilização CSS para otimizar o layout
 st.markdown("""
 <style>
-    [data-testid="stSidebar"] {
-        min-width: 380px !important;
-        max-width: 420px !important;
-    }
     div[data-testid="stButton"] button { font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -70,14 +66,14 @@ try:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
-    # BARRA LATERAL ALARGADA: MENU DE PLANEJAMENTO
+    # MENU LATERAL: PARÂMETROS E CADASTRO
     # ==========================================
     st.sidebar.header("🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ➕ Cadastro de Chefes de Turno")
-    with st.sidebar.expander("Novo Chefe de Turno", expanded=True):
+    with st.sidebar.expander("Novo Chefe de Turno", expanded=False):
         novo_matricula = st.text_input("Matrícula do Funcionário")
         novo_nome = st.text_input("Nome Completo")
         if st.button("Salvar Chefe de Turno", use_container_width=True):
@@ -93,103 +89,91 @@ try:
                 st.error("Preencha a matrícula e o nome.")
 
     st.sidebar.markdown("---")
-    st.sidebar.info("💡 **Dica:** Preencha os campos ao lado para adicionar novas atividades diretamente nas grades dos turnos correspondentes.")
+    st.sidebar.info("💡 **Dica:** Utilize o painel ao lado para inserir atividades e visualizar as grades operacionais em tempo real.")
 
     # ==========================================
-    # BLOCO DE INSERÇÃO DE ATIVIDADES (FORMULÁRIO)
+    # LAYOUT EM DUAS COLUNAS PRINCIPAIS (ESQUERDA: MENU/FORMULÁRIO | DIREITA: GRADE)
     # ==========================================
-    col_tit, col_btn_top = st.columns([3, 1])
-    with col_tit:
-        st.subheader("➕ Inserir Nova Atividade no Planejamento")
-    
-    with st.form("form_inserir_atividade"):
-        with col_btn_top:
-            pass # Espaço reservado para alinhamento do botão principal dentro do form
-            
-        # 5 colunas exatas na mesma linha
-        col1, col2, col3, col4, col5 = st.columns(5)
+    col_form, col_grade = st.columns([1, 1.3], gap="large")
+
+    with col_form:
+        st.subheader("➕ Inserir Atividade")
         
-        with col1:
+        with st.form("form_inserir_atividade"):
             chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
-        with col2:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-        with col3:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
-        with col4:
-            hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
-        with col5:
-            hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
+            
+            c_h1, c_h2 = st.columns(2)
+            with c_h1:
+                hora_ini_form = st.text_input("Hora Inicial (HH:MM)", value="07:00")
+            with c_h2:
+                hora_fim_form = st.text_input("Hora Final (HH:MM)", value="08:00")
 
-        st.markdown("---")
-        
-        # Campo COD. ATIVIDADE consolidado sem duplicações com descrição visível para consulta
-        opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE (Consulta e Seleção por Clique)", options=lista_opcoes_atividades)
+            st.markdown("---")
+            
+            # Campo COD. ATIVIDADE com consulta e seleção por clique
+            opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_opcoes_atividades)
 
-        # Separar o código e a descrição da opção escolhida
-        if " - " in opcao_selecionada:
-            cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
-        else:
-            cod_atividade_escolhido = opcao_selecionada
-            descricao_atividade = "Atividade Operacional Registrada"
+            if " - " in opcao_selecionada:
+                cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
+            else:
+                cod_atividade_escolhido = opcao_selecionada
+                descricao_atividade = "Atividade Operacional Registrada"
 
-        # Obter o ativo correspondente via consulta simulada (SQL lookup)
-        if col_cod in df_os.columns and col_ativo in df_os.columns:
-            resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
-            if not resultado_sql.empty:
-                ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper()
+            # Consulta SQL simulada para obter o ativo
+            if col_cod in df_os.columns and col_ativo in df_os.columns:
+                resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
+                if not resultado_sql.empty:
+                    ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper()
+                else:
+                    ativo_extraido = "GERAL"
             else:
                 ativo_extraido = "GERAL"
-        else:
-            ativo_extraido = "GERAL"
 
-        st.info(f"📌 **Ativo Vinculado:** {ativo_extraido} | **Descrição:** {descricao_atividade}")
+            st.info(f"📌 **Ativo:** {ativo_extraido}\n\n**Desc:** {descricao_atividade}")
 
-        # Botão de submissão posicionado estruturalmente dentro do formulário
-        botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
+            botao_inserir = st.form_submit_button("🚀 Adicionar ao Plano", use_container_width=True)
 
-        if botao_inserir:
-            novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
-            novo_registro = {
-                "ID": novo_id,
-                "TURMA": turma_form,
-                "CHEFE DE TURNO": chefe_form,
-                "TURNO": turno_form,  # Direcionamento automático para o bloco do turno correspondente
-                "DATA": data_stamp.strftime('%d/%m/%Y'),
-                "HORA INICIAL": hora_ini_form,
-                "HORA FINAL": hora_fim_form,
-                "ATIVO": ativo_extraido,
-                "Retirada NR12 ?": "NÃO",
-                "DADOS DA ATIVIDADE": f"[{cod_atividade_escolhido}] {descricao_atividade}",
-                "STATUS": "Agendado"
-            }
-            st.session_state.plano_operacional.append(novo_registro)
-            st.success(f"Atividade adicionada com sucesso ao Turno {turno_form}!")
-            st.rerun()
+            if botao_inserir:
+                novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
+                novo_registro = {
+                    "ID": novo_id,
+                    "TURMA": turma_form,
+                    "CHEFE DE TURNO": chefe_form,
+                    "TURNO": turno_form,
+                    "DATA": data_stamp.strftime('%d/%m/%Y'),
+                    "HORA INICIAL": hora_ini_form,
+                    "HORA FINAL": hora_fim_form,
+                    "ATIVO": ativo_extraido,
+                    "Retirada NR12 ?": "NÃO",
+                    "DADOS DA ATIVIDADE": f"[{cod_atividade_escolhido}] {descricao_atividade}",
+                    "STATUS": "Agendado"
+                }
+                st.session_state.plano_operacional.append(novo_registro)
+                st.success(f"Adicionado ao Turno {turno_form}!")
+                st.rerun()
 
-    st.divider()
+    with col_grade:
+        st.subheader("📋 Grade de Planejamento Operacional")
+        st.markdown(f"**Data Stamp Ativa:** {data_stamp.strftime('%d/%m/%Y')}")
 
-    # ==========================================
-    # GRADES DE PLANEJAMENTO DIÁRIO (DIURNO, ADM, NOTURNO)
-    # ==========================================
-    st.subheader("📋 Grade de Planejamento Diário Operacional")
-    st.markdown(f"**Data do Plano (Stamp Ativo):** {data_stamp.strftime('%d/%m/%Y')}")
+        df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
-    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+        turnos_secoes = [
+            ("DIURNO", "☀️ Turno Diurno"),
+            ("ADM", "🏢 Turno Administrativo (ADM)"),
+            ("NOTURNO", "🌙 Turno Noturno")
+        ]
 
-    turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
-        ("ADM", "🏢 Turno Administrativo (ADM)"),
-        ("NOTURNO", "🌙 Turno Noturno")
-    ]
-
-    for codigo_turno, titulo_turno in turnos_secoes:
-        st.markdown(f"### {titulo_turno}")
-        df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
-        
-        if not df_turno_atual.empty:
-            st.dataframe(df_turno_atual, use_container_width=True)
-        else:
-            st.info(f"Nenhuma atividade programada para o {titulo_turno.lower()}. Utilize o formulário acima para adicionar.")
+        for codigo_turno, titulo_turno in turnos_secoes:
+            st.markdown(f"#### {titulo_turno}")
+            df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
+            
+            if not df_turno_atual.empty:
+                st.dataframe(df_turno_atual, use_container_width=True)
+            else:
+                st.info(f"Nenhuma atividade no {titulo_turno.lower()}.")
 
     st.divider()
 
