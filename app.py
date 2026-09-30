@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS para otimizar a barra lateral e o layout
+# Estilização CSS para otimizar a barra lateral e os elementos compactos
 st.markdown("""
 <style>
     [data-testid="stSidebar"] {
@@ -76,27 +76,41 @@ try:
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### ➕ Cadastro de Chefes de Turno")
-    with st.sidebar.expander("Novo Chefe de Turno", expanded=False):
-        novo_matricula = st.text_input("Matrícula do Funcionário")
-        novo_nome = st.text_input("Nome Completo")
-        if st.button("Salvar Chefe de Turno", use_container_width=True):
-            if novo_matricula and novo_nome:
-                novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
-                if novo_chefe_str not in st.session_state.lista_chefes:
-                    st.session_state.lista_chefes.append(novo_chefe_str)
-                    st.success("Chefe cadastrado com sucesso!")
-                    st.rerun()
-                else:
-                    st.warning("Este chefe já está cadastrado.")
-            else:
-                st.error("Preencha a matrícula e o nome.")
-
-    st.sidebar.markdown("---")
     st.sidebar.markdown("### ➕ Inserir Atividade")
 
     with st.sidebar.form("form_inserir_atividade"):
-        chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
+        
+        # Cabeçalho integrado com o label e botão compacto (+) ao lado para registar novo chefe
+        col_lbl_chefe, col_btn_plus = st.columns([4, 1])
+        with col_lbl_chefe:
+            chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
+        with col_btn_plus:
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            abrir_cadastro = st.form_submit_button("➕")
+
+        # Se o botão "+" for acionado, mostramos os campos de registo logo abaixo num expander integrado
+        if abrir_cadastro:
+            st.session_state['mostrar_cadastro_chefe'] = not st.session_state.get('mostrar_cadastro_chefe', False)
+
+        if st.session_state.get('mostrar_cadastro_chefe', False):
+            st.markdown("---")
+            st.markdown("#### 👤 Registar Novo Chefe")
+            novo_matricula = st.text_input("Matrícula")
+            novo_nome = st.text_input("Nome Completo")
+            if st.form_submit_button("💾 Salvar Novo Chefe"):
+                if novo_matricula and novo_nome:
+                    novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
+                    if novo_chefe_str not in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.append(novo_chefe_str)
+                        st.session_state['mostrar_cadastro_chefe'] = False
+                        st.success("Chefe registado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.warning("Este chefe já está registado.")
+                else:
+                    st.error("Preencha matrícula e nome.")
+            st.markdown("---")
+
         turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
         turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
         
@@ -159,7 +173,7 @@ try:
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno Administrativo (ADM)"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
