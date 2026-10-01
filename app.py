@@ -231,7 +231,6 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    # Alinhamento do filtro de data lado a lado com o botão de exportação
     col_filtro, col_botao_download = st.columns([2, 2])
     with col_filtro:
         data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1)
@@ -269,16 +268,21 @@ try:
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
-        # Filtro rigoroso e autônomo por turno e data selecionada
+        # Filtro rigoroso por turno e data
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if not df_turno_atual.empty:
-            primeira_linha = df_turno_atual.iloc[0]
-            turma_info = str(primeira_linha.get('TURMA', 'N/D')).strip().upper()
-            chefe_info = str(primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D')))
-            data_info = str(primeira_linha.get('DATA', data_selecionada_filtro))
+            # Captura dinâmica dos valores cadastrados nas linhas deste turno específico
+            turmas_turno = df_turno_atual['TURMA'].dropna().unique().tolist()
+            chefes_turno = df_turno_atual['CHEFE DE TURNO'].dropna().unique().tolist()
             
-            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
+            turma_info = " / ".join([str(t).strip().upper() for t in turmas_turno]) if turmas_turno else "N/D"
+            chefe_info = " / ".join([str(c).strip() for c in chefes_turno]) if chefes_turno else "N/D"
+            data_info = data_selecionada_filtro
+            
+            # Pega a cor principal da primeira turma listada no turno para colorir o cabeçalho
+            primeira_turma = str(turmas_turno[0]).strip().upper() if turmas_turno else "ADM"
+            cor_destaque = mapa_cores.get(primeira_turma, "#FFFFFF")
             
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
