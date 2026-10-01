@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para estreitar a coluna Nº e alinhar a tabela
+# Estilização CSS avançada para estreitar a coluna Nº e alinhar o layout
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,7 +30,7 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Forçar a coluna Nº a ficar extremamente estreita (metade da largura anterior) */
+    /* Forçar a coluna Nº a ficar extremamente estreita e compacta */
     [data-testid="stDataFrame"] table th:nth-child(2),
     [data-testid="stDataFrame"] table td:nth-child(1),
     [data-testid="stDataFrame"] table td:nth-child(2) {
@@ -73,6 +73,9 @@ try:
         if os.path.exists(ARQUIVO_BANCO_DADOS):
             try:
                 df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
+                # Garantir que todos os registos possuem um ID único
+                if 'ID' not in df_persisted.columns:
+                    df_persisted['ID'] = [f"{i+1:02d}" for i in range(len(df_persisted))]
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
@@ -207,7 +210,7 @@ try:
         botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
 
         if botao_inserir_form:
-            novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
+            novo_id = f"ID_{int(datetime.now().timestamp())}"
             novo_registro = {
                 "ID": novo_id,
                 "TURMA": turma_form,
@@ -289,7 +292,7 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo limpo (sem botões)
+            # Cabeçalho executivo limpo
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 8px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
@@ -302,38 +305,35 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Preparar tabela incluindo a coluna "Nº" e a coluna "Excluir" com o "X"
-            df_exibicao_copia = df_turno_atual.copy()
-            df_exibicao_copia.insert(0, 'Nº', range(1, len(df_exibicao_copia) + 1))
-            df_exibicao_copia['Excluir'] = '❌'
-            
-            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
-            df_final_tabela = df_exibicao_copia[[c for c in colunas_exibir if c in df_exibicao_copia.columns]]
-            
-            # Exibir tabela interativa onde cada linha pode ser selecionada para exclusão rápida, ou feedback direto
-            event = st.dataframe(
-                df_final_tabela, 
-                use_container_width=True, 
-                hide_index=True, 
-                selection_mode="single-row",
-                on_select="rerun",
-                key=f"table_{codigo_turno}"
-            )
-            
-            # Lógica para detetar quando o usuário clica numa linha para excluir
-            selected_rows = event.selection.get("rows", []) if event and hasattr(event, "selection") else []
-            if selected_rows:
-                idx_selecionado_tabela = selected_rows[0]
-                # Obter o índice real correspondente no dataframe original do turno
-                orig_index_real = df_turno_atual.index[idx_selecionado_tabela]
+            # Listagem limpa e segura por linha com botão de exclusão individual baseado no ID real
+            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
+                col_n, col_cod_atv, col_hi, col_hf, col_ativ, col_nr12, col_desc_atv, col_st, col_del = st.columns([0.6, 2, 1.2, 1.2, 1.8, 1.5, 6, 1.5, 0.8])
                 
-                # Executa a exclusão imediata
-                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != orig_index_real]
-                salvar_plano_nuvem(st.session_state.plano_operacional)
-                st.success("Atividade excluída com sucesso!")
-                st.rerun()
-                
-            st.markdown("<p style='color: #888888; font-size: 12px; margin-top: -5px;'>💡 <i>Dica: Clique em qualquer linha da tabela acima para excluí-la instantaneamente.</i></p>", unsafe_allow_html=True)
+                with col_n:
+                    st.markdown(f"<div style='text-align: center; padding-top: 5px; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
+                with col_cod_atv:
+                    st.text(str(row.get('Cód. Atividade', '')))
+                with col_hi:
+                    st.text(str(row.get('Hora Inicial', '')))
+                with col_hf:
+                    st.text(str(row.get('Hora Final', '')))
+                with col_ativ:
+                    st.text(str(row.get('Ativo', '')))
+                with col_nr12:
+                    st.text(str(row.get('Retirada NR12', '')))
+                with col_desc_atv:
+                    st.text(str(row.get('Dados da Atividade', '')))
+                with col_st:
+                    st.text(str(row.get('Status', '')))
+                with col_del:
+                    reg_id = str(row.get('ID', ''))
+                    if st.button("❌", key=f"del_row_{reg_id}_{sub_idx}", help="Excluir esta atividade"):
+                        # Remove rigorosamente apenas o registo cujo ID corresponde ao botão clicado
+                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) != reg_id]
+                        salvar_plano_nuvem(st.session_state.plano_operacional)
+                        st.success("Atividade excluída com sucesso!")
+                        st.rerun()
+            
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
