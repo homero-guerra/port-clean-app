@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
+import io
+
+# Importações do ReportLab para geração de PDF em Paisagem
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -55,14 +63,18 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # GESTÃO DO ESTADO DA SESSÃO
+    # PERSISTÊNCIA EM NUVEM (FICHEIRO CSV COMPARTILHADO)
     # ==========================================
-    if 'lista_chefes' not in st.session_state:
-        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
-        st.session_state.lista_chefes = sorted(list(set(chefes_iniciais)))
+    ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
 
-    if 'plano_operacional' not in st.session_state:
-        st.session_state.plano_operacional = [
+    def carregar_plano_nuvem():
+        if os.path.exists(ARQUIVO_BANCO_DADOS):
+            try:
+                df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
+                return df_persisted.to_dict(orient='records')
+            except:
+                pass
+        return [
             {
                 "ID": "01", 
                 "TURMA": "AMARELA", 
@@ -93,12 +105,25 @@ try:
             }
         ]
 
+    def salvar_plano_nuvem(lista_registros):
+        df_to_save = pd.DataFrame(lista_registros)
+        df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding='utf-8')
+
+    # ==========================================
+    # GESTÃO DO ESTADO DA SESSÃO
+    # ==========================================
+    if 'lista_chefes' not in st.session_state:
+        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
+        st.session_state.lista_chefes = sorted(list(set(chefes_iniciais)))
+
+    if 'plano_operacional' not in st.session_state:
+        st.session_state.plano_operacional = carregar_plano_nuvem()
+
     # Identificar colunas exatas na base
     col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
     col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
 
-    # Criar lista única e consolidada (sem duplicações) combinando Código + Descrição
     if col_cod in df_os.columns and col_desc in df_os.columns:
         df_unicos = df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
         lista_opcoes_atividades = sorted([f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()])
@@ -197,16 +222,29 @@ try:
                 "Status": "Agendado"
             }
             st.session_state.plano_operacional.append(novo_registro)
-            st.success(f"Adicionado ao Turno {turno_form}!")
+            salvar_plano_nuvem(st.session_state.plano_operacional)
+            st.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: GRADES DE PLANEJAMENTO OPERACIONAL
+    # ÁREA PRINCIPAL: GRADES DE PLANEJAMENTO E FILTRO HISTÓRICO
     # ==========================================
     st.markdown("### 📋 Grade de Planejamento Diário Operacional")
+    
+    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+    
+    if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
+        datas_disponiveis = sorted(df_plano_atual['DATA'].dropna().unique().tolist())
+    else:
+        datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
+
+    col_filtro1, col_filtro2 = st.columns([2, 3])
+    with col_filtro1:
+        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1)
+    
     st.markdown("---")
 
-    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
 
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
@@ -214,28 +252,25 @@ try:
         ("NOTURNO", "🌙 Turno Noturno")
     ]
     
-    # Mapeamento de cores vibrantes para as turmas
     mapa_cores = {
-        "AMARELA": "#FFD700",  # Amarelo Ouro
-        "BRANCA": "#F5F5F5",   # Branco Neve
-        "VERDE": "#32CD32",    # Verde Lime
-        "AZUL": "#1E90FF",     # Azul Dodger
-        "ADM": "#A9A9A9"       # Cinza
+        "AMARELA": "#FFD700",
+        "BRANCA": "#F5F5F5",
+        "VERDE": "#32CD32",
+        "AZUL": "#1E90FF",
+        "ADM": "#A9A9A9"
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
-        df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
+        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'] == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if not df_turno_atual.empty:
             primeira_linha = df_turno_atual.iloc[0]
             turma_info = primeira_linha.get('TURMA', 'N/D')
-            chefe_info = primeira_linha.get('CHEFE DE TURNO', 'N/D')
-            data_info = primeira_linha.get('DATA', data_stamp.strftime('%d/%m/%Y'))
+            chefe_info = primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D'))
+            data_info = primeira_linha.get('DATA', data_selecionada_filtro)
             
-            # Cor dinâmica baseada estritamente na turma cadastrada
             cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho unificado com cor da turma em todos os campos descritivos ao lado do título
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
@@ -254,9 +289,104 @@ try:
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
         else:
             st.markdown(f"#### {titulo_turno}")
-            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()}.")
+            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
+
+    # ==========================================
+    # FUNÇÃO DE GERAÇÃO DO PDF EM PAISAGEM (LANDSCAPE)
+    # ==========================================
+    def gerar_pdf_paisagem():
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            rightMargin=30, leftMargin=30,
+            topMargin=30, bottomMargin=30
+        )
+        
+        elementos = []
+        styles = getSampleStyleSheet()
+        
+        # Estilos personalizados
+        titulo_style = ParagraphStyle(
+            'TituloRelatorio',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#003366'),
+            spaceAfter=15
+        )
+        
+        sub_style = ParagraphStyle(
+            'SubTituloRelatorio',
+            parent=styles['Heading2'],
+            fontSize=12,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=8
+        )
+        
+        normal_style = styles['Normal']
+        
+        elementos.append(Paragraph("⚓ Port Cleanliness Planner - Plano Operacional Diário", titulo_style))
+        elementos.append(Paragraph(f"<b>Data do Plano:</b> {data_selecionada_filtro}", sub_style))
+        elementos.append(Spacer(1, 10))
+        
+        colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+        
+        for codigo_turno, titulo_turno in turnos_secoes:
+            df_t = df_filtrado_data[df_filtrado_data['TURNO'] == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
+            
+            if not df_t.empty:
+                primeira_linha = df_t.iloc[0]
+                t_info = primeira_linha.get('TURMA', 'N/D')
+                c_info = primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D'))
+                
+                cabecalho_turno = f"<b>{titulo_turno}</b> &nbsp;|&nbsp; Turma: {t_info} &nbsp;|&nbsp; Chefe: {c_info}"
+                elementos.append(Paragraph(cabecalho_turno, sub_style))
+                
+                # Montar tabela para o PDF
+                dados_tabela = [colunas_exibir] # Cabeçalho
+                for _, row in df_t.iterrows():
+                    linha = [str(row.get(c, '')) for c in colunas_exibir]
+                    dados_tabela.append(linha)
+                    
+                tabela = Table(dados_tabela, colWidths=[90, 70, 70, 80, 80, 260, 80])
+                tabela.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F9F9F9')),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ]))
+                
+                elementos.append(tabela)
+                elementos.append(Spacer(1, 15))
+                
+        doc.build(elementos)
+        buffer.seek(0)
+        return buffer
+
+    # ==========================================
+    # BOTÃO DE EXPORTAÇÃO PARA PDF NA TELA
+    # ==========================================
+    st.markdown("---")
+    if not df_filtrado_data.empty:
+        pdf_gerado = gerar_pdf_paisagem()
+        st.download_button(
+            label="📄 Baixar Plano em PDF (Horizontal / Paisagem)",
+            data=pdf_gerado,
+            file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    else:
+        st.info("💡 Não há atividades cadastradas para a data selecionada para gerar o PDF.")
 
     st.divider()
 
