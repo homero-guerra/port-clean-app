@@ -262,7 +262,7 @@ try:
     }
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
@@ -276,7 +276,6 @@ try:
             chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
             data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
             
-            # Se for ADM, a cor do título permanece padrão (Branco/Neutro); nos demais, usa a cor da turma
             if codigo_turno == "ADM":
                 cor_destaque = "#FFFFFF"
             else:
@@ -295,9 +294,21 @@ try:
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
             colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
-            df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
             
-            st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+            # Exibir cada linha acompanhada de um botão de exclusão individual
+            for idx, row in df_turno_atual.iterrows():
+                col_tabela, col_btn_del = st.columns([11, 1])
+                with col_tabela:
+                    df_linha_unica = pd.DataFrame([row])[[c for c in colunas_exibir if c in row.index]]
+                    st.dataframe(df_linha_unica, use_container_width=True, hide_index=True)
+                with col_btn_del:
+                    st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+                    if st.button("❌", key=f"del_{idx}", help="Excluir esta linha do plano"):
+                        # Remove o item correspondente do estado da sessão e atualiza o arquivo em nuvem
+                        st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
+                        salvar_plano_nuvem(st.session_state.plano_operacional)
+                        st.success("Linha excluída com sucesso!")
+                        st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
