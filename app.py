@@ -281,8 +281,8 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo com o botão "Excluir Atividade" alinhado ao lado da Data
-            col_titulo_bloco, col_botao_excluir = st.columns([7, 3])
+            # Cabeçalho executivo unificado com o botão modal ao lado da Data
+            col_titulo_bloco, col_botao_modal = st.columns([8, 2])
             
             with col_titulo_bloco:
                 html_cabecalho = f"""
@@ -297,21 +297,26 @@ try:
                 """
                 st.markdown(html_cabecalho, unsafe_allow_html=True)
                 
-            with col_botao_excluir:
-                # Seletor rápido e botão de exclusão direto ao lado da data
-                atividades_turno_lista = [f"ID {row.get('ID','')} | {row.get('Hora Inicial','')} - {row.get('Cód. Atividade','')}" for _, row in df_turno_atual.iterrows()]
-                
-                col_sel, col_btn = st.columns([3, 2])
-                with col_sel:
-                    atividade_para_excluir = st.selectbox(f"Sel. Atividade ({codigo_turno})", options=atividades_turno_lista, label_visibility="collapsed", key=f"sel_excluir_{codigo_turno}")
-                with col_btn:
-                    if st.button("❌ Excluir Atividade", key=f"btn_excluir_{codigo_turno}", use_container_width=True):
-                        id_selecionado = atividade_para_excluir.split(" | ")[0].replace("ID ", "").strip()
-                        # Remove a atividade correspondente ao ID selecionado
-                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get("ID")) != str(id_selecionado)]
-                        salvar_plano_nuvem(st.session_state.plano_operacional)
-                        st.success("Atividade excluída com sucesso!")
-                        st.rerun()
+            with col_botao_modal:
+                st.markdown("<div style='margin-top: -2px;'></div>", unsafe_allow_html=True)
+                # Botão que abre a janela pop-up (dialog)
+                @st.dialog(f"Gerenciar Atividades - {titulo_turno} ({data_selecionada_filtro})")
+                def modal_exclusao(df_turno, codigo_t):
+                    st.write("Selecione a atividade que deseja excluir:")
+                    st.markdown("---")
+                    for idx, row in df_turno.iterrows():
+                        c_info, c_del = st.columns([9, 1])
+                        with c_info:
+                            st.text(f"🕒 [{row.get('Hora Inicial','')}-{row.get('Hora Final','')}] {row.get('Cód. Atividade','')} - {row.get('Dados da Atividade','')}")
+                        with c_del:
+                            if st.button("❌", key=f"popup_del_{codigo_t}_{idx}", help="Excluir esta atividade"):
+                                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
+                                salvar_plano_nuvem(st.session_state.plano_operacional)
+                                st.success("Atividade excluída com sucesso!")
+                                st.rerun()
+
+                if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}", use_container_width=True):
+                    modal_exclusao(df_turno_atual, codigo_turno)
 
             # Exibe a tabela limpa do turno
             colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
