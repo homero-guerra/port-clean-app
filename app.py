@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout, responsividade e impressão
+# Estilização CSS avançada para otimizar o layout e alinhamentos
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -29,12 +29,6 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Otimização para impressão limpa (modo paisagem automático no Ctrl+P) */
-    @media print {
-        [data-testid="stSidebar"] { display: none; }
-        @page { size: landscape; }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -237,13 +231,28 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    col_filtro1, col_filtro2 = st.columns([2, 3])
-    with col_filtro1:
+    # Alinhamento do filtro de data lado a lado com o botão de exportação
+    col_filtro, col_botao_download = st.columns([2, 2])
+    with col_filtro:
         data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1)
     
-    st.markdown("---")
-
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+
+    with col_botao_download:
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+        if not df_filtrado_data.empty:
+            csv_export = df_filtrado_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Baixar Plano do Dia (CSV)",
+                data=csv_export,
+                file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
+
+    st.markdown("---")
 
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
@@ -260,13 +269,14 @@ try:
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
-        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'] == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
+        # Filtro rigoroso e autônomo por turno e data selecionada
+        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if not df_turno_atual.empty:
             primeira_linha = df_turno_atual.iloc[0]
-            turma_info = primeira_linha.get('TURMA', 'N/D')
-            chefe_info = primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D'))
-            data_info = primeira_linha.get('DATA', data_selecionada_filtro)
+            turma_info = str(primeira_linha.get('TURMA', 'N/D')).strip().upper()
+            chefe_info = str(primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D')))
+            data_info = str(primeira_linha.get('DATA', data_selecionada_filtro))
             
             cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
@@ -291,20 +301,6 @@ try:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
-
-    # ==========================================
-    # BOTÃO DE EXPORTAÇÃO EXCEL / CSV PARA O PLANO DA DATA
-    # ==========================================
-    st.markdown("---")
-    if not df_filtrado_data.empty:
-        csv_export = df_filtrado_data.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Baixar Plano do Dia (CSV / Excel)",
-            data=csv_export,
-            file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
 
     st.divider()
 
