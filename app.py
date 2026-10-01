@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout, pop-up proporcional e alinhamentos
+# Estilização CSS avançada para otimizar o layout, largura da coluna Nº e pop-up proporcional
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,10 +30,19 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Estilização para tornar a janela modal (pop-up) proporcional e centralizada com scroll */
+    /* Ajustar largura compacta para a primeira coluna (Nº) nas tabelas */
+    [data-testid="stDataFrame"] div[data-testid="stTable"] table th:first-child,
+    [data-testid="stDataFrame"] div[data-testid="stTable"] table td:first-child {
+        width: 50px !important;
+        min-width: 50px !important;
+        max-width: 60px !important;
+        text-align: center !important;
+    }
+
+    /* Caixa de diálogo modal proporcional, compacta e centralizada com barra de rolagem */
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        max-height: 70vh;
-        overflow-y: auto;
+        max-height: 55vh !important;
+        overflow-y: auto !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -306,36 +315,36 @@ try:
             with col_botao_modal:
                 st.markdown("<div style='margin-top: -2px;'></div>", unsafe_allow_html=True)
                 
-                # Definição do Pop-up (Dialog) proporcional com scroll e coluna de ordem
-                @st.dialog(f"Gerenciar Atividades - {titulo_turno} ({data_selecionada_filtro})")
+                # Definição do Pop-up proporcional com largura otimizada e scroll
+                @st.dialog(f"Excluir Atividades - {titulo_turno}")
                 def modal_exclusao(df_t, codigo_t):
-                    st.markdown("<p style='color: #a0a0a0; font-size: 13px;'>Clique no botão ❌ ao lado da atividade que deseja remover:</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color: #a0a0a0; font-size: 13px;'>Data: <b>{data_selecionada_filtro}</b></p>", unsafe_allow_html=True)
                     st.markdown("---")
                     
                     for sub_idx, (orig_idx, row_item) in enumerate(df_t.iterrows(), 1):
                         c_num, c_txt, c_del = st.columns([1, 8, 1])
                         with c_num:
-                            st.markdown(f"**{sub_idx}º**")
+                            st.markdown(f"**{sub_idx}**")
                         with c_txt:
                             st.text(f"[{row_item.get('Hora Inicial','')}-{row_item.get('Hora Final','')}] {row_item.get('Cód. Atividade','')} - {row_item.get('Dados da Atividade','')}")
                         with c_del:
                             if st.button("❌", key=f"popup_del_{codigo_t}_{orig_idx}", help="Excluir esta atividade"):
                                 st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != orig_idx]
                                 salvar_plano_nuvem(st.session_state.plano_operacional)
-                                st.success("Atividade excluída com sucesso!")
+                                st.success("Atividade excluída!")
                                 st.rerun()
 
                 if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}", use_container_width=True):
                     modal_exclusao(df_turno_atual, codigo_turno)
 
-            # Inserir coluna de número de ordem (Nº) sequencial na tabela principal do turno
+            # Inserir coluna de número de ordem (Nº) sequencial compacta
             df_exibicao_copia = df_turno_atual.copy()
             df_exibicao_copia.insert(0, 'Nº', range(1, len(df_exibicao_copia) + 1))
             
             colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_tabela = df_exibicao_copia[[c for c in colunas_exibir if c in df_exibicao_copia.columns]]
             
-            st.dataframe(df_final_tabela, use_container_width=True, hide_index=True)
+            st.dataframe(df_final_tabela, use_container_width=True, hide_index=True, column_config={"Nº": st.column_config.NumberColumn("Nº", width="small")})
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
