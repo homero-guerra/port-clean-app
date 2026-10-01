@@ -261,20 +261,13 @@ try:
         "ADM": "#A9A9A9"
     }
 
-    # Identifica dinamicamente a cor/turma ativa no Turno Diurno para o dia selecionado
-    df_diurno_check = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    cor_diurno_herdada = "#FFD700"
-    if not df_diurno_check.empty:
-        ultima_turma_diurno = str(df_diurno_check.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        cor_diurno_herdada = mapa_cores.get(ultima_turma_diurno, "#FFD700")
-
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno", None),
-        ("ADM", "🏢 Turno ADM", cor_diurno_herdada), # ADM herda exatamente a cor do Diurno
-        ("NOTURNO", "🌙 Turno Noturno", None)
+        ("DIURNO", "☀️️ Turno Diurno"),
+        ("ADM", "🏢 Turno ADM"),
+        ("NOTURNO", "🌙 Turno Noturno")
     ]
 
-    for codigo_turno, titulo_turno, cor_forcada in turnos_secoes:
+    for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if not df_turno_atual.empty:
@@ -283,8 +276,11 @@ try:
             chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
             data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
             
-            # Se for o ADM, a cor do título acompanha estritamente a cor do Diurno
-            cor_destaque = cor_forcada if cor_forcada else mapa_cores.get(turma_info, "#FFFFFF")
+            # Se for ADM, a cor do título permanece padrão (Branco/Neutro); nos demais, usa a cor da turma
+            if codigo_turno == "ADM":
+                cor_destaque = "#FFFFFF"
+            else:
+                cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
@@ -303,8 +299,7 @@ try:
             
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
         else:
-            cor_destaque = cor_forcada if cor_forcada else "#FFFFFF"
-            st.markdown(f"<h4 style='color: {cor_destaque};'>{titulo_turno}</h4>", unsafe_allow_html=True)
+            st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
