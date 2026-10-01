@@ -281,37 +281,43 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo único para o bloco do turno
-            html_cabecalho = f"""
-            <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
-                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                <span style="color: #d0d0d0; font-size: 14px;">
-                    📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                </span>
-            </div>
-            """
-            st.markdown(html_cabecalho, unsafe_allow_html=True)
+            # Cabeçalho executivo com o botão "Excluir Atividade" alinhado ao lado da Data
+            col_titulo_bloco, col_botao_excluir = st.columns([7, 3])
             
-            # Exibe a tabela completa de uma só vez (sem repetir cabeçalhos)
+            with col_titulo_bloco:
+                html_cabecalho = f"""
+                <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 5px; flex-wrap: wrap;">
+                    <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                    <span style="color: #d0d0d0; font-size: 14px;">
+                        📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                        &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                        &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+                    </span>
+                </div>
+                """
+                st.markdown(html_cabecalho, unsafe_allow_html=True)
+                
+            with col_botao_excluir:
+                # Seletor rápido e botão de exclusão direto ao lado da data
+                atividades_turno_lista = [f"ID {row.get('ID','')} | {row.get('Hora Inicial','')} - {row.get('Cód. Atividade','')}" for _, row in df_turno_atual.iterrows()]
+                
+                col_sel, col_btn = st.columns([3, 2])
+                with col_sel:
+                    atividade_para_excluir = st.selectbox(f"Sel. Atividade ({codigo_turno})", options=atividades_turno_lista, label_visibility="collapsed", key=f"sel_excluir_{codigo_turno}")
+                with col_btn:
+                    if st.button("❌ Excluir Atividade", key=f"btn_excluir_{codigo_turno}", use_container_width=True):
+                        id_selecionado = atividade_para_excluir.split(" | ")[0].replace("ID ", "").strip()
+                        # Remove a atividade correspondente ao ID selecionado
+                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get("ID")) != str(id_selecionado)]
+                        salvar_plano_nuvem(st.session_state.plano_operacional)
+                        st.success("Atividade excluída com sucesso!")
+                        st.rerun()
+
+            # Exibe a tabela limpa do turno
             colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
             
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
-            
-            # Seletor rápido e limpo abaixo da tabela para gerir / excluir linhas caso necessário
-            with st.expander(f"⚙️ Gerenciar / Excluir Atividades do {titulo_turno}"):
-                for idx, row in df_turno_atual.iterrows():
-                    col_txt, col_del = st.columns([10, 2])
-                    with col_txt:
-                        st.text(f"[{row.get('Hora Inicial','')}-{row.get('Hora Final','')}] {row.get('Cód. Atividade','')} - {row.get('Dados da Atividade','')}")
-                    with col_del:
-                        if st.button("❌ Excluir", key=f"del_item_{idx}"):
-                            st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            st.success("Atividade removida!")
-                            st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
@@ -323,7 +329,7 @@ try:
     # ==========================================
     # SEÇÃO DE VISUALIZAÇÃO DOS DADOS BRUTOS DA BASE
     # ==========================================
-    st.subheader("📑 Base de Ordens de Serviço Processadas (Referência)")
+    st.subheader("📑 Base de Ordens de Serviço Processadas (Reference)")
     st.dataframe(df_os.head(50), use_container_width=True)
 
 except Exception as e:
