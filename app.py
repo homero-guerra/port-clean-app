@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para estreitar a coluna Nº e alinhar o layout
+# Estilização CSS avançada para as grades com bordas estilizadas, coluna Nº estreita e layout limpo
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,12 +30,36 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Forçar a coluna Nº a ficar extremamente estreita e compacta */
-    [data-testid="stDataFrame"] table th:nth-child(2),
-    [data-testid="stDataFrame"] table td:nth-child(1),
-    [data-testid="stDataFrame"] table td:nth-child(2) {
-        max-width: 35px !important;
-        width: 35px !important;
+    /* Estilização da tabela com bordas corporativas idênticas às anteriores */
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 14px;
+        background-color: #0e1117;
+        color: #fafafa;
+    }
+    .custom-table th {
+        background-color: #1a1c24;
+        color: #fafafa;
+        border: 1px solid #303030;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+    }
+    .custom-table td {
+        border: 1px solid #303030;
+        padding: 8px 10px;
+        vertical-align: middle;
+    }
+    .col-num {
+        width: 40px !important;
+        text-align: center !important;
+        font-weight: bold;
+        color: #a0a0a0;
+    }
+    .col-acao {
+        width: 50px !important;
         text-align: center !important;
     }
 </style>
@@ -73,15 +97,14 @@ try:
         if os.path.exists(ARQUIVO_BANCO_DADOS):
             try:
                 df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
-                # Garantir que todos os registos possuem um ID único
                 if 'ID' not in df_persisted.columns:
-                    df_persisted['ID'] = [f"{i+1:02d}" for i in range(len(df_persisted))]
+                    df_persisted['ID'] = [f"ID_{i+1}" for i in range(len(df_persisted))]
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
         return [
             {
-                "ID": "01", 
+                "ID": "ID_01", 
                 "TURMA": "AMARELA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "DIURNO", 
@@ -95,7 +118,7 @@ try:
                 "Status": "Em Execução"
             },
             {
-                "ID": "02", 
+                "ID": "ID_02", 
                 "TURMA": "BRANCA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
@@ -305,35 +328,46 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Listagem limpa e segura por linha com botão de exclusão individual baseado no ID real
+            # Renderização da tabela estilizada com bordas corporativas
+            html_tabela = '<table class="custom-table">'
+            html_tabela += '<thead><tr>'
+            html_tabela += '<th class="col-num">Nº</th>'
+            html_tabela += '<th>Cód. Atividade</th>'
+            html_tabela += '<th>Hora Inicial</th>'
+            html_tabela += '<th>Hora Final</th>'
+            html_tabela += '<th>Ativo</th>'
+            html_tabela += '<th>Retirada NR12</th>'
+            html_tabela += '<th>Dados da Atividade</th>'
+            html_tabela += '<th>Status</th>'
+            html_tabela += '<th class="col-acao">Excluir</th>'
+            html_tabela += '</tr></thead><tbody>'
+            
             for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                col_n, col_cod_atv, col_hi, col_hf, col_ativ, col_nr12, col_desc_atv, col_st, col_del = st.columns([0.6, 2, 1.2, 1.2, 1.8, 1.5, 6, 1.5, 0.8])
-                
-                with col_n:
-                    st.markdown(f"<div style='text-align: center; padding-top: 5px; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
-                with col_cod_atv:
-                    st.text(str(row.get('Cód. Atividade', '')))
-                with col_hi:
-                    st.text(str(row.get('Hora Inicial', '')))
-                with col_hf:
-                    st.text(str(row.get('Hora Final', '')))
-                with col_ativ:
-                    st.text(str(row.get('Ativo', '')))
-                with col_nr12:
-                    st.text(str(row.get('Retirada NR12', '')))
-                with col_desc_atv:
-                    st.text(str(row.get('Dados da Atividade', '')))
-                with col_st:
-                    st.text(str(row.get('Status', '')))
-                with col_del:
-                    reg_id = str(row.get('ID', ''))
-                    if st.button("❌", key=f"del_row_{reg_id}_{sub_idx}", help="Excluir esta atividade"):
-                        # Remove rigorosamente apenas o registo cujo ID corresponde ao botão clicado
+                html_tabela += '<tr>'
+                html_tabela += f'<td class="col-num">{sub_idx}</td>'
+                html_tabela += f'<td>{row.get("Cód. Atividade", "")}</td>'
+                html_tabela += f'<td>{row.get("Hora Inicial", "")}</td>'
+                html_tabela += f'<td>{row.get("Hora Final", "")}</td>'
+                html_tabela += f'<td>{row.get("Ativo", "")}</td>'
+                html_tabela += f'<td>{row.get("Retirada NR12", "")}</td>'
+                html_tabela += f'<td>{row.get("Dados da Atividade", "")}</td>'
+                html_tabela += f'<td>{row.get("Status", "")}</td>'
+                html_tabela += f'<td class="col-acao">...</td>'  # Espaço reservado para o botão Streamlit abaixo
+                html_tabela += '</tr>'
+            
+            html_tabela += '</tbody></table>'
+            st.markdown(html_tabela, unsafe_allow_html=True)
+            
+            # Botões de exclusão alinhados por linha abaixo da tabela estilizada
+            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
+                reg_id = str(row.get('ID', ''))
+                c_txt, c_btn = st.columns([11, 1])
+                with c_btn:
+                    if st.button("❌", key=f"del_h_{reg_id}_{sub_idx}", help=f"Excluir item {sub_idx}"):
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) != reg_id]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
                         st.rerun()
-            
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
