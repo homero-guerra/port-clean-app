@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para estreitar a coluna Nº, botões e modal proporcional
+# Estilização CSS avançada para estreitar a coluna Nº e alinhar a tabela
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,23 +30,13 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Forçar a coluna Nº a ficar estreita e compacta */
+    /* Forçar a coluna Nº a ficar extremamente estreita (metade da largura anterior) */
     [data-testid="stDataFrame"] table th:nth-child(2),
     [data-testid="stDataFrame"] table td:nth-child(1),
     [data-testid="stDataFrame"] table td:nth-child(2) {
-        max-width: 50px !important;
-        width: 50px !important;
+        max-width: 35px !important;
+        width: 35px !important;
         text-align: center !important;
-    }
-
-    /* Proporção e largura controlada para a janela modal */
-    div[data-testid="stDialog"] {
-        width: 100% !important;
-        max-width: 750px !important;
-    }
-    div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        max-height: 60vh !important;
-        overflow-y: auto !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -299,55 +289,51 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo ajustado com proporção correta para o botão estreito
-            col_titulo_bloco, col_botao_modal = st.columns([8, 2])
+            # Cabeçalho executivo limpo (sem botões)
+            html_cabecalho = f"""
+            <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 8px; flex-wrap: wrap;">
+                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                <span style="color: #d0d0d0; font-size: 14px;">
+                    📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+                </span>
+            </div>
+            """
+            st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            with col_titulo_bloco:
-                html_cabecalho = f"""
-                <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 5px; flex-wrap: wrap;">
-                    <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                    <span style="color: #d0d0d0; font-size: 14px;">
-                        📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                        &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                        &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                    </span>
-                </div>
-                """
-                st.markdown(html_cabecalho, unsafe_allow_html=True)
-                
-            with col_botao_modal:
-                st.markdown("<div style='margin-top: -2px;'></div>", unsafe_allow_html=True)
-                
-                # Definição do Pop-up proporcional e compacto
-                @st.dialog(f"Excluir Atividades - {titulo_turno}")
-                def modal_exclusao(df_t, codigo_t):
-                    st.markdown(f"<p style='color: #a0a0a0; font-size: 13px;'>Data: <b>{data_selecionada_filtro}</b></p>", unsafe_allow_html=True)
-                    st.markdown("---")
-                    
-                    for sub_idx, (orig_idx, row_item) in enumerate(df_t.iterrows(), 1):
-                        c_num, c_txt, c_del = st.columns([1, 10, 1])
-                        with c_num:
-                            st.markdown(f"**{sub_idx}**")
-                        with c_txt:
-                            st.text(f"[{row_item.get('Hora Inicial','')}-{row_item.get('Hora Final','')}] {row_item.get('Cód. Atividade','')} - {row_item.get('Dados da Atividade','')}")
-                        with c_del:
-                            if st.button("❌", key=f"popup_del_{codigo_t}_{orig_idx}", help="Excluir esta atividade"):
-                                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != orig_idx]
-                                salvar_plano_nuvem(st.session_state.plano_operacional)
-                                st.success("Atividade excluída!")
-                                st.rerun()
-
-                if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}"):
-                    modal_exclusao(df_turno_atual, codigo_turno)
-
-            # Inserir coluna de número de ordem (Nº) sequencial estreita
+            # Preparar tabela incluindo a coluna "Nº" e a coluna "Excluir" com o "X"
             df_exibicao_copia = df_turno_atual.copy()
             df_exibicao_copia.insert(0, 'Nº', range(1, len(df_exibicao_copia) + 1))
+            df_exibicao_copia['Excluir'] = '❌'
             
-            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
             df_final_tabela = df_exibicao_copia[[c for c in colunas_exibir if c in df_exibicao_copia.columns]]
             
-            st.dataframe(df_final_tabela, use_container_width=True, hide_index=True, column_config={"Nº": st.column_config.NumberColumn("Nº", width="small")})
+            # Exibir tabela interativa onde cada linha pode ser selecionada para exclusão rápida, ou feedback direto
+            event = st.dataframe(
+                df_final_tabela, 
+                use_container_width=True, 
+                hide_index=True, 
+                selection_mode="single-row",
+                on_select="rerun",
+                key=f"table_{codigo_turno}"
+            )
+            
+            # Lógica para detetar quando o usuário clica numa linha para excluir
+            selected_rows = event.selection.get("rows", []) if event and hasattr(event, "selection") else []
+            if selected_rows:
+                idx_selecionado_tabela = selected_rows[0]
+                # Obter o índice real correspondente no dataframe original do turno
+                orig_index_real = df_turno_atual.index[idx_selecionado_tabela]
+                
+                # Executa a exclusão imediata
+                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != orig_index_real]
+                salvar_plano_nuvem(st.session_state.plano_operacional)
+                st.success("Atividade excluída com sucesso!")
+                st.rerun()
+                
+            st.markdown("<p style='color: #888888; font-size: 12px; margin-top: -5px;'>💡 <i>Dica: Clique em qualquer linha da tabela acima para excluí-la instantaneamente.</i></p>", unsafe_allow_html=True)
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
