@@ -281,6 +281,7 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
+            # Cabeçalho executivo único para o bloco do turno
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
@@ -293,22 +294,24 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
+            # Exibe a tabela completa de uma só vez (sem repetir cabeçalhos)
             colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
             
-            # Exibir cada linha acompanhada de um botão de exclusão individual
-            for idx, row in df_turno_atual.iterrows():
-                col_tabela, col_btn_del = st.columns([11, 1])
-                with col_tabela:
-                    df_linha_unica = pd.DataFrame([row])[[c for c in colunas_exibir if c in row.index]]
-                    st.dataframe(df_linha_unica, use_container_width=True, hide_index=True)
-                with col_btn_del:
-                    st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
-                    if st.button("❌", key=f"del_{idx}", help="Excluir esta linha do plano"):
-                        # Remove o item correspondente do estado da sessão e atualiza o arquivo em nuvem
-                        st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
-                        salvar_plano_nuvem(st.session_state.plano_operacional)
-                        st.success("Linha excluída com sucesso!")
-                        st.rerun()
+            st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+            
+            # Seletor rápido e limpo abaixo da tabela para gerir / excluir linhas caso necessário
+            with st.expander(f"⚙️ Gerenciar / Excluir Atividades do {titulo_turno}"):
+                for idx, row in df_turno_atual.iterrows():
+                    col_txt, col_del = st.columns([10, 2])
+                    with col_txt:
+                        st.text(f"[{row.get('Hora Inicial','')}-{row.get('Hora Final','')}] {row.get('Cód. Atividade','')} - {row.get('Dados da Atividade','')}")
+                    with col_del:
+                        if st.button("❌ Excluir", key=f"del_item_{idx}"):
+                            st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            st.success("Atividade removida!")
+                            st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
