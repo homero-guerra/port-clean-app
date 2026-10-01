@@ -4,12 +4,12 @@ from datetime import datetime
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="Plano de Limpeza Industrial",
+    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
     page_icon="⚓",
     layout="wide"
 )
 
-# Estilização CSS avançada para eliminar margens e subir tudo ao máximo no topo
+# Estilização CSS avançada para otimizar o layout e aproximar do topo
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -21,7 +21,7 @@ st.markdown("""
         padding-top: 0rem !important;
     }
     
-    /* Remover o espaçamento superior padrão da página principal */
+    /* Remover espaçamento superior da página principal */
     .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
@@ -32,7 +32,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Título principal do painel alinhado no topo absoluto
-st.markdown("<h1>⚓ Plano de Limpeza Industrial</h1>", unsafe_allow_html=True)
+st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
@@ -63,9 +63,34 @@ try:
 
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = [
-            {"ID": "01", "TURMA": "AMARELA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "DIURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "07:00", "HORA FINAL": "08:00", "ATIVO": "3220TR04", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR04.3] LAVAGEM DA MOTORIZAÇÃO DA TR", "STATUS": "Em Execução"},
-            {"ID": "02", "TURMA": "BRANCA", "CHEFE DE TURNO": "20000000 - GERSON FUENTES", "TURNO": "ADM", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "08:00", "HORA FINAL": "17:00", "ATIVO": "CT08", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[CT08.4] CONTINUAR RECHEGO NA A4", "STATUS": "Em Execução"},
-            {"ID": "03", "TURMA": "VERDE", "CHEFE DE TURNO": "20005373 - TEMISTOCLES SANTANA", "TURNO": "NOTURNO", "DATA": datetime.now().strftime('%d/%m/%Y'), "HORA INICIAL": "19:00", "HORA FINAL": "20:00", "ATIVO": "3220TR05", "Retirada NR12 ?": "NÃO", "DADOS DA ATIVIDADE": "[3220TR05.4] LAVAGEM DA MOTORIZAÇÃO", "STATUS": "Pendente"}
+            {
+                "ID": "01", 
+                "TURMA": "AMARELA", 
+                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
+                "TURNO": "DIURNO", 
+                "DATA": datetime.now().strftime('%d/%m/%Y'), 
+                "Cód. Atividade": "3220TR04.3",
+                "Hora Inicial": "07:00", 
+                "Hora Final": "08:00", 
+                "Ativo": "3220TR04", 
+                "Retirada NR12": "NÃO", 
+                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR", 
+                "Status": "Em Execução"
+            },
+            {
+                "ID": "02", 
+                "TURMA": "BRANCA", 
+                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
+                "TURNO": "ADM", 
+                "DATA": datetime.now().strftime('%d/%m/%Y'), 
+                "Cód. Atividade": "CT08.4",
+                "Hora Inicial": "08:00", 
+                "Hora Final": "17:00", 
+                "Ativo": "CT08", 
+                "Retirada NR12": "NÃO", 
+                "Dados da Atividade": "CONTINUAR RECHEGO NA A4", 
+                "Status": "Em Execução"
+            }
         ]
 
     # Identificar colunas exatas na base
@@ -81,14 +106,10 @@ try:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO E INSERÇÃO
+    # BARRA LATERAL: MENU DE PLANEJAMENTO E INSERÇÃO (APENAS 1 BOTÃO)
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
     data_stamp = st.sidebar.date_input("Data do Planejamento (Stamp)", value=datetime.now().date())
-
-    with st.sidebar:
-        if st.button("🚀 Adicionar ao Plano", use_container_width=True):
-            st.session_state['trigger_adicionar'] = True
 
     st.sidebar.markdown("---")
 
@@ -153,9 +174,10 @@ try:
 
         st.info(f"{descricao_atividade}")
 
-        botao_inserir_form = st.form_submit_button("🚀 Salvar na Grade", use_container_width=True)
+        # Botão único e definitivo para salvar na grade
+        botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
 
-        if botao_inserir_form or st.session_state.pop('trigger_adicionar', False):
+        if botao_inserir_form:
             novo_id = f"{len(st.session_state.plano_operacional) + 1:02d}"
             novo_registro = {
                 "ID": novo_id,
@@ -163,12 +185,13 @@ try:
                 "CHEFE DE TURNO": chefe_form,
                 "TURNO": turno_form,
                 "DATA": data_stamp.strftime('%d/%m/%Y'),
-                "HORA INICIAL": hora_ini_form,
-                "HORA FINAL": hora_fim_form,
-                "ATIVO": ativo_extraido,
-                "Retirada NR12 ?": "NÃO",
-                "DADOS DA ATIVIDADE": f"[{cod_atividade_escolhido}] {descricao_atividade}",
-                "STATUS": "Agendado"
+                "Cód. Atividade": cod_atividade_escolhido,
+                "Hora Inicial": hora_ini_form,
+                "Hora Final": hora_fim_form,
+                "Ativo": ativo_extraido,
+                "Retirada NR12": "NÃO",
+                "Dados da Atividade": descricao_atividade,
+                "Status": "Agendado"
             }
             st.session_state.plano_operacional.append(novo_registro)
             st.success(f"Adicionado ao Turno {turno_form}!")
@@ -182,9 +205,10 @@ try:
 
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
+    # Definição dos turnos com títulos atualizados e informativos
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
-        ("ADM", "🏢 Turno Administrativo (ADM)"),
+        ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
 
@@ -193,9 +217,21 @@ try:
         df_turno_atual = df_plano_atual[df_plano_atual['TURNO'] == codigo_turno]
         
         if not df_turno_atual.empty:
-            st.dataframe(df_turno_atual, use_container_width=True)
+            # Extrair metadados da turma, chefe e data para exibir abaixo do título do turno
+            primeira_linha = df_turno_atual.iloc[0]
+            turma_info = primeira_linha.get('TURMA', 'N/D')
+            chefe_info = primeira_linha.get('CHEFE DE TURNO', 'N/D')
+            data_info = primeira_linha.get('DATA', data_stamp.strftime('%d/%m/%Y'))
+            
+            st.markdown(f"<span style='color: #d0d0d0; font-size: 14px;'>📌 <b>Turma:</b> {turma_info} &nbsp;|&nbsp; 👤 <b>Chefe de Turno:</b> {chefe_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {data_info}</span>", unsafe_allow_html=True)
+            
+            # Filtrar e exibir apenas as colunas exigidas na ordem correta
+            colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
+            
+            st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
         else:
-            st.info(f"Nenhuma atividade no {titulo_turno.lower()}.")
+            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()}.")
 
     st.divider()
 
