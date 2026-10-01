@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout, largura da coluna Nº e pop-up proporcional
+# Estilização CSS avançada para estreitar a coluna Nº, botões e modal proporcional
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,18 +30,22 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Ajustar largura compacta para a primeira coluna (Nº) nas tabelas */
-    [data-testid="stDataFrame"] div[data-testid="stTable"] table th:first-child,
-    [data-testid="stDataFrame"] div[data-testid="stTable"] table td:first-child {
+    /* Forçar a coluna Nº a ficar estreita e compacta */
+    [data-testid="stDataFrame"] table th:nth-child(2),
+    [data-testid="stDataFrame"] table td:nth-child(1),
+    [data-testid="stDataFrame"] table td:nth-child(2) {
+        max-width: 50px !important;
         width: 50px !important;
-        min-width: 50px !important;
-        max-width: 60px !important;
         text-align: center !important;
     }
 
-    /* Caixa de diálogo modal proporcional, compacta e centralizada com barra de rolagem */
+    /* Proporção e largura controlada para a janela modal */
+    div[data-testid="stDialog"] {
+        width: 100% !important;
+        max-width: 750px !important;
+    }
     div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
-        max-height: 55vh !important;
+        max-height: 60vh !important;
         overflow-y: auto !important;
     }
 </style>
@@ -127,7 +131,6 @@ try:
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = carregar_plano_nuvem()
 
-    # Identificar colunas exatas na base
     col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
     col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
@@ -296,8 +299,8 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo unificado com o botão modal ao lado da Data
-            col_titulo_bloco, col_botao_modal = st.columns([7, 3])
+            # Cabeçalho executivo ajustado com proporção correta para o botão estreito
+            col_titulo_bloco, col_botao_modal = st.columns([8, 2])
             
             with col_titulo_bloco:
                 html_cabecalho = f"""
@@ -315,14 +318,14 @@ try:
             with col_botao_modal:
                 st.markdown("<div style='margin-top: -2px;'></div>", unsafe_allow_html=True)
                 
-                # Definição do Pop-up proporcional com largura otimizada e scroll
+                # Definição do Pop-up proporcional e compacto
                 @st.dialog(f"Excluir Atividades - {titulo_turno}")
                 def modal_exclusao(df_t, codigo_t):
                     st.markdown(f"<p style='color: #a0a0a0; font-size: 13px;'>Data: <b>{data_selecionada_filtro}</b></p>", unsafe_allow_html=True)
                     st.markdown("---")
                     
                     for sub_idx, (orig_idx, row_item) in enumerate(df_t.iterrows(), 1):
-                        c_num, c_txt, c_del = st.columns([1, 8, 1])
+                        c_num, c_txt, c_del = st.columns([1, 10, 1])
                         with c_num:
                             st.markdown(f"**{sub_idx}**")
                         with c_txt:
@@ -334,10 +337,10 @@ try:
                                 st.success("Atividade excluída!")
                                 st.rerun()
 
-                if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}", use_container_width=True):
+                if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}"):
                     modal_exclusao(df_turno_atual, codigo_turno)
 
-            # Inserir coluna de número de ordem (Nº) sequencial compacta
+            # Inserir coluna de número de ordem (Nº) sequencial estreita
             df_exibicao_copia = df_turno_atual.copy()
             df_exibicao_copia.insert(0, 'Nº', range(1, len(df_exibicao_copia) + 1))
             
