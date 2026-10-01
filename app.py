@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout e alinhamentos
+# Estilização CSS avançada para otimizar o layout, pop-up proporcional e alinhamentos
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -29,6 +29,12 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
+
+    /* Estilização para tornar a janela modal (pop-up) proporcional e centralizada com scroll */
+    div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -282,7 +288,7 @@ try:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
             # Cabeçalho executivo unificado com o botão modal ao lado da Data
-            col_titulo_bloco, col_botao_modal = st.columns([8, 2])
+            col_titulo_bloco, col_botao_modal = st.columns([7, 3])
             
             with col_titulo_bloco:
                 html_cabecalho = f"""
@@ -299,18 +305,22 @@ try:
                 
             with col_botao_modal:
                 st.markdown("<div style='margin-top: -2px;'></div>", unsafe_allow_html=True)
-                # Botão que abre a janela pop-up (dialog)
+                
+                # Definição do Pop-up (Dialog) proporcional com scroll e coluna de ordem
                 @st.dialog(f"Gerenciar Atividades - {titulo_turno} ({data_selecionada_filtro})")
-                def modal_exclusao(df_turno, codigo_t):
-                    st.write("Selecione a atividade que deseja excluir:")
+                def modal_exclusao(df_t, codigo_t):
+                    st.markdown("<p style='color: #a0a0a0; font-size: 13px;'>Clique no botão ❌ ao lado da atividade que deseja remover:</p>", unsafe_allow_html=True)
                     st.markdown("---")
-                    for idx, row in df_turno.iterrows():
-                        c_info, c_del = st.columns([9, 1])
-                        with c_info:
-                            st.text(f"🕒 [{row.get('Hora Inicial','')}-{row.get('Hora Final','')}] {row.get('Cód. Atividade','')} - {row.get('Dados da Atividade','')}")
+                    
+                    for sub_idx, (orig_idx, row_item) in enumerate(df_t.iterrows(), 1):
+                        c_num, c_txt, c_del = st.columns([1, 8, 1])
+                        with c_num:
+                            st.markdown(f"**{sub_idx}º**")
+                        with c_txt:
+                            st.text(f"[{row_item.get('Hora Inicial','')}-{row_item.get('Hora Final','')}] {row_item.get('Cód. Atividade','')} - {row_item.get('Dados da Atividade','')}")
                         with c_del:
-                            if st.button("❌", key=f"popup_del_{codigo_t}_{idx}", help="Excluir esta atividade"):
-                                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != idx]
+                            if st.button("❌", key=f"popup_del_{codigo_t}_{orig_idx}", help="Excluir esta atividade"):
+                                st.session_state.plano_operacional = [item for i, item in enumerate(st.session_state.plano_operacional) if i != orig_idx]
                                 salvar_plano_nuvem(st.session_state.plano_operacional)
                                 st.success("Atividade excluída com sucesso!")
                                 st.rerun()
@@ -318,11 +328,14 @@ try:
                 if st.button("❌ Excluir Atividade", key=f"btn_modal_{codigo_turno}", use_container_width=True):
                     modal_exclusao(df_turno_atual, codigo_turno)
 
-            # Exibe a tabela limpa do turno
-            colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
-            df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
+            # Inserir coluna de número de ordem (Nº) sequencial na tabela principal do turno
+            df_exibicao_copia = df_turno_atual.copy()
+            df_exibicao_copia.insert(0, 'Nº', range(1, len(df_exibicao_copia) + 1))
             
-            st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            df_final_tabela = df_exibicao_copia[[c for c in colunas_exibir if c in df_exibicao_copia.columns]]
+            
+            st.dataframe(df_final_tabela, use_container_width=True, hide_index=True)
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
