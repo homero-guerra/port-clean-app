@@ -106,13 +106,12 @@ try:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO (FORMULÁRIO ÚNICO)
+    # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
     with st.sidebar.form("form_inserir_atividade"):
         
-        # 1. Linha com Data, Hora Inicial e Hora Final Lado a Lado
         col_d, col_h1, col_h2 = st.columns([2, 1, 1])
         with col_d:
             data_stamp = st.date_input("Data", value=datetime.now().date())
@@ -123,7 +122,6 @@ try:
             
         st.markdown("---")
         
-        # 2. Linha para Registo e Seleção de Chefe
         col_lbl_chefe, col_btn_plus = st.columns([4, 1])
         with col_lbl_chefe:
             chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
@@ -153,7 +151,6 @@ try:
                     st.error("Preencha matrícula e nome.")
             st.markdown("---")
 
-        # 3. Turma e Turno
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
@@ -162,7 +159,6 @@ try:
 
         st.markdown("---")
         
-        # 4. Seleção da Atividade
         opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_opcoes_atividades)
 
         if " - " in opcao_selecionada:
@@ -182,7 +178,6 @@ try:
 
         st.info(f"{descricao_atividade}")
 
-        # 5. Botão Único
         botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
 
         if botao_inserir_form:
@@ -213,7 +208,6 @@ try:
 
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
 
-    # Definição dos turnos
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
@@ -222,9 +216,9 @@ try:
     
     # Mapeamento de cores vibrantes para as turmas
     mapa_cores = {
-        "AMARELA": "#FFD700",  # Amarelo/Dourado
-        "BRANCA": "#FFFFFF",   # Branco
-        "VERDE": "#32CD32",    # Verde Claro/Lime
+        "AMARELA": "#FFD700",  # Amarelo Ouro
+        "BRANCA": "#F5F5F5",   # Branco Neve
+        "VERDE": "#32CD32",    # Verde Lime
         "AZUL": "#1E90FF",     # Azul Dodger
         "ADM": "#A9A9A9"       # Cinza
     }
@@ -238,29 +232,27 @@ try:
             chefe_info = primeira_linha.get('CHEFE DE TURNO', 'N/D')
             data_info = primeira_linha.get('DATA', data_stamp.strftime('%d/%m/%Y'))
             
-            # Obtém a cor associada à turma (Padrão branco se não encontrar)
+            # Cor dinâmica baseada estritamente na turma cadastrada
             cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Estrutura Flexbox para manter Título e Info na mesma linha alinhados perfeitamente
+            # Cabeçalho unificado com cor da turma em todos os campos descritivos ao lado do título
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
                 <span style="color: #d0d0d0; font-size: 14px;">
                     📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> {chefe_info} 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> {data_info}
+                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
                 </span>
             </div>
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Filtrar e exibir colunas exatas
             colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_exibicao = df_turno_atual[[c for c in colunas_exibir if c in df_turno_atual.columns]]
             
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
         else:
-            # Caso não tenha atividade, mostra o título na cor padrão
             st.markdown(f"#### {titulo_turno}")
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()}.")
             
