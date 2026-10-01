@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout e aproximar do topo
+# Estilização CSS avançada para otimizar o layout, responsividade e impressão
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -29,6 +29,12 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
+
+    /* Otimização para impressão limpa (modo paisagem automático no Ctrl+P) */
+    @media print {
+        [data-testid="stSidebar"] { display: none; }
+        @page { size: landscape; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -224,7 +230,6 @@ try:
     # ==========================================
     st.markdown("### 📋 Grade de Planejamento Diário Operacional")
     
-    # Barra de Filtro de Planos Anteriores por Data
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
     if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
@@ -238,7 +243,6 @@ try:
     
     st.markdown("---")
 
-    # Filtrar os dados da nuvem com base na data selecionada
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
 
     turnos_secoes = [
@@ -248,11 +252,11 @@ try:
     ]
     
     mapa_cores = {
-        "AMARELA": "#FFD700",  # Amarelo Ouro
-        "BRANCA": "#F5F5F5",   # Branco Neve
-        "VERDE": "#32CD32",    # Verde Lime
-        "AZUL": "#1E90FF",     # Azul Dodger
-        "ADM": "#A9A9A9"       # Cinza
+        "AMARELA": "#FFD700",
+        "BRANCA": "#F5F5F5",
+        "VERDE": "#32CD32",
+        "AZUL": "#1E90FF",
+        "ADM": "#A9A9A9"
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
@@ -287,6 +291,20 @@ try:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
+
+    # ==========================================
+    # BOTÃO DE EXPORTAÇÃO EXCEL / CSV PARA O PLANO DA DATA
+    # ==========================================
+    st.markdown("---")
+    if not df_filtrado_data.empty:
+        csv_export = df_filtrado_data.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Baixar Plano do Dia (CSV / Excel)",
+            data=csv_export,
+            file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
     st.divider()
 
