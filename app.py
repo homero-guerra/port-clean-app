@@ -268,21 +268,16 @@ try:
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
-        # Filtro rigoroso por turno e data
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if not df_turno_atual.empty:
-            # Captura dinâmica dos valores cadastrados nas linhas deste turno específico
-            turmas_turno = df_turno_atual['TURMA'].dropna().unique().tolist()
-            chefes_turno = df_turno_atual['CHEFE DE TURNO'].dropna().unique().tolist()
+            # Captura rigorosamente os dados da ÚLTIMA linha inserida (mais recente) para este turno na data
+            ultima_linha = df_turno_atual.iloc[-1]
+            turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
+            chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
+            data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
             
-            turma_info = " / ".join([str(t).strip().upper() for t in turmas_turno]) if turmas_turno else "N/D"
-            chefe_info = " / ".join([str(c).strip() for c in chefes_turno]) if chefes_turno else "N/D"
-            data_info = data_selecionada_filtro
-            
-            # Pega a cor principal da primeira turma listada no turno para colorir o cabeçalho
-            primeira_turma = str(turmas_turno[0]).strip().upper() if turmas_turno else "ADM"
-            cor_destaque = mapa_cores.get(primeira_turma, "#FFFFFF")
+            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
