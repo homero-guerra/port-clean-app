@@ -2,13 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import io
-
-# Importações do ReportLab para geração de PDF em Paisagem
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -231,6 +224,7 @@ try:
     # ==========================================
     st.markdown("### 📋 Grade de Planejamento Diário Operacional")
     
+    # Barra de Filtro de Planos Anteriores por Data
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
     if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
@@ -244,6 +238,7 @@ try:
     
     st.markdown("---")
 
+    # Filtrar os dados da nuvem com base na data selecionada
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
 
     turnos_secoes = [
@@ -253,11 +248,11 @@ try:
     ]
     
     mapa_cores = {
-        "AMARELA": "#FFD700",
-        "BRANCA": "#F5F5F5",
-        "VERDE": "#32CD32",
-        "AZUL": "#1E90FF",
-        "ADM": "#A9A9A9"
+        "AMARELA": "#FFD700",  # Amarelo Ouro
+        "BRANCA": "#F5F5F5",   # Branco Neve
+        "VERDE": "#32CD32",    # Verde Lime
+        "AZUL": "#1E90FF",     # Azul Dodger
+        "ADM": "#A9A9A9"       # Cinza
     }
 
     for codigo_turno, titulo_turno in turnos_secoes:
@@ -292,101 +287,6 @@ try:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
-
-    # ==========================================
-    # FUNÇÃO DE GERAÇÃO DO PDF EM PAISAGEM (LANDSCAPE)
-    # ==========================================
-    def gerar_pdf_paisagem():
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=landscape(letter),
-            rightMargin=30, leftMargin=30,
-            topMargin=30, bottomMargin=30
-        )
-        
-        elementos = []
-        styles = getSampleStyleSheet()
-        
-        # Estilos personalizados
-        titulo_style = ParagraphStyle(
-            'TituloRelatorio',
-            parent=styles['Heading1'],
-            fontSize=18,
-            textColor=colors.HexColor('#003366'),
-            spaceAfter=15
-        )
-        
-        sub_style = ParagraphStyle(
-            'SubTituloRelatorio',
-            parent=styles['Heading2'],
-            fontSize=12,
-            textColor=colors.HexColor('#333333'),
-            spaceAfter=8
-        )
-        
-        normal_style = styles['Normal']
-        
-        elementos.append(Paragraph("⚓ Port Cleanliness Planner - Plano Operacional Diário", titulo_style))
-        elementos.append(Paragraph(f"<b>Data do Plano:</b> {data_selecionada_filtro}", sub_style))
-        elementos.append(Spacer(1, 10))
-        
-        colunas_exibir = ['Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
-        
-        for codigo_turno, titulo_turno in turnos_secoes:
-            df_t = df_filtrado_data[df_filtrado_data['TURNO'] == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
-            
-            if not df_t.empty:
-                primeira_linha = df_t.iloc[0]
-                t_info = primeira_linha.get('TURMA', 'N/D')
-                c_info = primeira_linha.get('CHEFE_TURNO', primeira_linha.get('CHEFE DE TURNO', 'N/D'))
-                
-                cabecalho_turno = f"<b>{titulo_turno}</b> &nbsp;|&nbsp; Turma: {t_info} &nbsp;|&nbsp; Chefe: {c_info}"
-                elementos.append(Paragraph(cabecalho_turno, sub_style))
-                
-                # Montar tabela para o PDF
-                dados_tabela = [colunas_exibir] # Cabeçalho
-                for _, row in df_t.iterrows():
-                    linha = [str(row.get(c, '')) for c in colunas_exibir]
-                    dados_tabela.append(linha)
-                    
-                tabela = Table(dados_tabela, colWidths=[90, 70, 70, 80, 80, 260, 80])
-                tabela.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F9F9F9')),
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 1), (-1, -1), 9),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ]))
-                
-                elementos.append(tabela)
-                elementos.append(Spacer(1, 15))
-                
-        doc.build(elementos)
-        buffer.seek(0)
-        return buffer
-
-    # ==========================================
-    # BOTÃO DE EXPORTAÇÃO PARA PDF NA TELA
-    # ==========================================
-    st.markdown("---")
-    if not df_filtrado_data.empty:
-        pdf_gerado = gerar_pdf_paisagem()
-        st.download_button(
-            label="📄 Baixar Plano em PDF (Horizontal / Paisagem)",
-            data=pdf_gerado,
-            file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-    else:
-        st.info("💡 Não há atividades cadastradas para a data selecionada para gerar o PDF.")
 
     st.divider()
 
