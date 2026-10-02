@@ -10,54 +10,95 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada incluindo as linhas de grade corporativas nas tabelas
-st.markdown("""
+# Mapa de cores oficial das equipes/turmas
+mapa_cores = {
+    "AMARELA": "#FFD700",
+    "BRANCA": "#F5F5F5",
+    "VERDE": "#32CD32",
+    "AZUL": "#1E90FF",
+    "ADM": "#A9A9A9"
+}
+
+# Capturar seleção atual da barra lateral para aplicar cor dinâmica nos selects
+# Como o formulário ainda não processou, pegamos o estado prévio ou valor padrão
+cor_selecionada_dinamica = "#FFD700" # Amarela por padrão
+
+# Estilização CSS avançada incluindo as grades corporativas e cores dinâmicas nos selects da barra lateral
+st.markdown(f"""
 <style>
     /* Remover espaçamento superior da barra lateral */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         min-width: 420px !important;
         max-width: 460px !important;
     }
-    [data-testid="stSidebar"] > div:first-child {
+    [data-testid="stSidebar"] > div:first-child {{
         padding-top: 0rem !important;
     }
     
     /* Remover espaçamento superior da página principal */
-    .block-container {
+    .block-container {{
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
     }
     
-    div[data-testid="stButton"] button { font-weight: bold; }
+    div[data-testid="stButton"] button {{ font-weight: bold; }}
 
-    /* Estilização corporativa com linhas de grade (borders) visíveis em cada célula */
-    .grid-row {
-        display: flex;
-        align-items: center;
+    /* Eliminar o espaçamento padrão entre as colunas do Streamlit para formar uma grade unificada */
+    [data-testid="stHorizontalBlock"] {{
+        gap: 0px !important;
+    }
+
+    /* Estilização corporativa com grades e bordas completas nas células */
+    .grid-header {{
+        background-color: #1a1c24;
+        color: #fafafa;
+        border-top: 1px solid #3a3a3a;
+        border-bottom: 2px solid #4a4a4a;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 8px 6px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }}
+    .grid-cell {{
+        background-color: #0e1117;
+        color: #fafafa;
         border-bottom: 1px solid #303030;
         border-left: 1px solid #303030;
         border-right: 1px solid #303030;
-        background-color: #0e1117;
-        font-size: 14px;
-        color: #fafafa;
-    }
-    .grid-header {
-        display: flex;
-        align-items: center;
-        background-color: #1a1c24;
-        border: 1px solid #303030;
-        font-weight: 600;
-        font-size: 14px;
-        color: #fafafa;
-        padding: 4px 0px;
-    }
-    .grid-cell {
-        padding: 8px 10px;
-        border-right: 1px solid #303030;
+        font-size: 13px;
+        padding: 8px 6px;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
-    }
+    }}
+    .grid-cell-center {{
+        background-color: #0e1117;
+        color: #a0a0a0;
+        border-bottom: 1px solid #303030;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 8px 6px;
+        text-align: center;
+    }}
+    .grid-header-center {{
+        background-color: #1a1c24;
+        color: #fafafa;
+        border-top: 1px solid #3a3a3a;
+        border-bottom: 2px solid #4a4a4a;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 8px 6px;
+        text-align: center;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -205,6 +246,24 @@ try:
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
+        # Injetar cor dinâmica baseada na Turma selecionada
+        cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
+        st.sidebar.markdown(f"""
+        <style>
+            /* Altera dinamicamente a cor da fonte nos seletores de Turma e Turno na barra lateral */
+            div[data-baseweb="select"] span[title="AMARELA"],
+            div[data-baseweb="select"] span[title="BRANCA"],
+            div[data-baseweb="select"] span[title="VERDE"],
+            div[data-baseweb="select"] span[title="AZUL"],
+            div[data-baseweb="select"] span[title="ADM"],
+            div[data-baseweb="select"] span[title="DIURNO"],
+            div[data-baseweb="select"] span[title="NOTURNO"] {{
+                color: {cor_dinamica} !important;
+                font-weight: bold !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+
         st.markdown("---")
         
         opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_opcoes_atividades)
@@ -283,14 +342,6 @@ try:
 
     st.markdown("---")
 
-    mapa_cores = {
-        "AMARELA": "#FFD700",
-        "BRANCA": "#F5F5F5",
-        "VERDE": "#32CD32",
-        "AZUL": "#1E90FF",
-        "ADM": "#A9A9A9"
-    }
-
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
@@ -324,28 +375,28 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Cabeçalho da Tabela com linhas de grade corporativas
+            # Proporções precisas para cada coluna da grade
             cols_def = [0.5, 1.8, 1, 1, 1.2, 1.2, 5.5, 1.2, 0.8]
             
             c_h = st.columns(cols_def)
-            with c_h[0]: st.markdown("<div class='grid-header' style='justify-content: center;'>Nº</div>", unsafe_allow_html=True)
-            with c_h[1]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Cód. Atividade</div>", unsafe_allow_html=True)
-            with c_h[2]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Hora Inicial</div>", unsafe_allow_html=True)
-            with c_h[3]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Hora Final</div>", unsafe_allow_html=True)
-            with c_h[4]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Ativo</div>", unsafe_allow_html=True)
-            with c_h[5]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Retirada NR12</div>", unsafe_allow_html=True)
-            with c_h[6]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Dados da Atividade</div>", unsafe_allow_html=True)
-            with c_h[7]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Status</div>", unsafe_allow_html=True)
-            with c_h[8]: st.markdown("<div class='grid-header' style='justify-content: center;'>Excluir</div>", unsafe_allow_html=True)
+            with c_h[0]: st.markdown("<div class='grid-header-center'>Nº</div>", unsafe_allow_html=True)
+            with c_h[1]: st.markdown("<div class='grid-header'>Cód. Atividade</div>", unsafe_allow_html=True)
+            with c_h[2]: st.markdown("<div class='grid-header'>Hora Inicial</div>", unsafe_allow_html=True)
+            with c_h[3]: st.markdown("<div class='grid-header'>Hora Final</div>", unsafe_allow_html=True)
+            with c_h[4]: st.markdown("<div class='grid-header'>Ativo</div>", unsafe_allow_html=True)
+            with c_h[5]: st.markdown("<div class='grid-header'>Retirada NR12</div>", unsafe_allow_html=True)
+            with c_h[6]: st.markdown("<div class='grid-header'>Dados da Atividade</div>", unsafe_allow_html=True)
+            with c_h[7]: st.markdown("<div class='grid-header'>Status</div>", unsafe_allow_html=True)
+            with c_h[8]: st.markdown("<div class='grid-header-center'>Excluir</div>", unsafe_allow_html=True)
 
-            # Renderização de linhas com bordas e grade visíveis perfeitamente alinhadas
+            # Renderização de linhas com grade completa, bordas e alinhamentos perfeitos
             for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
                 uid_alvo = str(row.get('UID', f'fallback_{sub_idx}'))
                 
                 c_r = st.columns(cols_def)
                 
                 with c_r[0]:
-                    st.markdown(f"<div class='grid-cell' style='text-align: center; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='grid-cell-center'>{sub_idx}</div>", unsafe_allow_html=True)
                 with c_r[1]:
                     st.markdown(f"<div class='grid-cell'>{str(row.get('Cód. Atividade', ''))}</div>", unsafe_allow_html=True)
                 with c_r[2]:
@@ -361,13 +412,15 @@ try:
                 with c_r[7]:
                     st.markdown(f"<div class='grid-cell'>{str(row.get('Status', ''))}</div>", unsafe_allow_html=True)
                 with c_r[8]:
+                    st.markdown("<div style='background-color: #0e1117; border-bottom: 1px solid #303030; border-left: 1px solid #303030; border-right: 1px solid #303030; padding: 2px 4px; text-align: center;'>", unsafe_allow_html=True)
                     if st.button("❌", key=f"del_{codigo_turno}_{uid_alvo}", help=f"Excluir item {sub_idx}"):
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_alvo]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
                         st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
             
-            st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
