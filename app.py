@@ -145,7 +145,7 @@ try:
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
-    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
+    st.sidebar.markdown("### 🎛️️ MENU DE PLANEJAMENTO")
 
     with st.sidebar.form("form_inserir_atividade"):
         
@@ -326,9 +326,7 @@ try:
                 st.markdown(html_cabecalho, unsafe_allow_html=True)
             
             with col_botao_excluir:
-                # Botão de exclusão alinhado no canto superior direito do bloco
                 if st.button("🗑️ Excluir Selecionado", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    # Verifica qual linha está selecionada no st.dataframe logo abaixo
                     selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
@@ -338,14 +336,20 @@ try:
                         if idx_sel < len(df_turno_atual):
                             uid_a_remover = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
                             if uid_a_remover:
+                                # Remove o item correspondente
                                 st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_a_remover]
                                 salvar_plano_nuvem(st.session_state.plano_operacional)
-                                st.success("Atividade selecionada excluída com sucesso!")
+                                
+                                # Limpa imediatamente o estado de seleção da tabela para reiniciar o ponteiro/botão
+                                if selecao_key in st.session_state:
+                                    del st.session_state[selecao_key]
+                                    
+                                st.success("Atividade excluída com sucesso!")
                                 st.rerun()
                     else:
-                        st.warning("Selecione primeiro uma linha na tabela abaixo clicando nela.")
+                        st.warning("Marque o botão de seleção na primeira coluna da linha desejada.")
 
-            # Preparar DataFrame limpo para exibição interativa (sem coluna de exclusão na tabela)
+            # Preparar DataFrame limpo para exibição interativa
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
@@ -355,7 +359,7 @@ try:
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa e limpa (permite selecionar a linha inteira com um clique)
+            # Grade interativa nativa com restrição estrita de seleção por clique na primeira coluna/checkbox
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
