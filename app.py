@@ -5,7 +5,7 @@ import os
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
+    page_title="Plano de Limpeza Ferroport - Gestão de Limpeza Industrial",
     page_icon="⚓",
     layout="wide"
 )
@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para ajuste de larguras, alinhamentos e estética corporativa
+# Estilização CSS avançada para controle de larguras e alinhamentos
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -38,20 +38,11 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Alinhamento dos blocos de turno */
-    .turno-header-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        flex-wrap: wrap;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # Título principal do painel alinhado no topo absoluto
-st.markdown("<h1>⚓ Port Cleanliness Planner - Gestão de Limpeza Industrial</h1>", unsafe_allow_html=True)
+st.markdown("<h1>⚓ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
@@ -194,7 +185,7 @@ try:
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
-        # Injetar cor dinâmica baseada na Turma selecionada de forma segura
+        # Injetar cor dinâmica baseada na Turma selecionada diretamente nos inputs de seleção
         cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
         css_dinamico = f"""
         <style>
@@ -269,7 +260,7 @@ try:
     # Layout unificado na mesma linha: Título, Filtro de Data e Botão de Download
     col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
     with col_tit_grade:
-        st.markdown("### 📋 Grade de Planejamento Diário Operacional")
+        st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
         data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
     with col_down_grade:
@@ -308,14 +299,14 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" compacto à direita
-            col_titulo_bloco, col_botao_excluir = st.columns([5, 1])
+            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" mais estreito à direita
+            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.2, 1.2])
             with col_titulo_bloco:
                 html_cabecalho = f"""
                 <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
                     <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
                     <span style="color: #d0d0d0; font-size: 14px;">
-                        📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                        👥 <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
                         &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
                         &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
                     </span>
