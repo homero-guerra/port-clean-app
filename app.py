@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import urllib.parse
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
     page_title="Plano de Limpeza Ferroport - Gestão de Limpeza Industrial",
-    page_icon="⚓",
+    page_icon="✨",
     layout="wide"
 )
 
@@ -41,8 +42,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel alinhado no topo absoluto
-st.markdown("<h1>⚓ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
+# Título principal do painel alinhado no topo absoluto com o novo emoji ✨
+st.markdown("<h1>✨ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
@@ -277,7 +278,7 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO ALINHADA HORIZONTALMENTE
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -285,39 +286,26 @@ try:
     with col_input_email:
         lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br", label_visibility="collapsed")
     with col_btn_email:
-        btn_prever_envio = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
-    if btn_prever_envio:
-        st.session_state['mostrar_preview_email'] = True
+    if btn_enviar_outlook:
+        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        corpo = f"""Prezados(as),
 
-    if st.session_state.get('mostrar_preview_email', False):
-        st.markdown("---")
-        st.markdown("#### 👁️ Pré-visualização da Mensagem de E-mail")
-        with st.container():
-            st.info(f"**Para:** {lista_emails}")
-            st.markdown(f"**Assunto:** [Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}")
-            st.markdown(f"""
-            Prezados(as),\n\n
-            Segue em anexo o relatório oficial consolidado do **Plano de Limpeza Diário** correspondente à data **{data_selecionada_filtro}**.\n\n
-            Atenciosamente,\n
-            **Gerência de Operações / PCP Ferroport**
-            """)
-            if not df_filtrado_data.empty:
-                st.caption(f"📎 Anexo pronto: `Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv` ({len(df_filtrado_data)} atividades registadas)")
-            else:
-                st.warning("⚠️ Atenção: Não existem atividades registadas para esta data para anexar ao relatório.")
-            
-            c_env1, c_env2 = st.columns([1, 1])
-            with c_env1:
-                if st.button("🚀 Confirmar e Enviar E-mail", type="primary", use_container_width=True):
-                    st.success("E-mail enviado com sucesso para a lista de distribuição!")
-                    st.session_state['mostrar_preview_email'] = False
-                    st.rerun()
-            with c_env2:
-                if st.button("❌ Cancelar", use_container_width=True):
-                    st.session_state['mostrar_preview_email'] = False
-                    st.rerun()
-        st.markdown("---")
+Segue em anexo o relatório oficial consolidado do Plano de Limpeza Diário correspondente à data {data_selecionada_filtro}.
+
+Atenciosamente,
+Gerência de Operações / PCP Ferroport"""
+        
+        # Codificar assunto e corpo para URL (protocolo mailto)
+        assunto_encoded = urllib.parse.quote(assunto)
+        corpo_encoded = urllib.parse.quote(corpo)
+        
+        # Montar link mailto direcionando para o Outlook / Cliente de e-mail padrão
+        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
+        
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
+        st.success("Outlook acionado! A mensagem foi aberta com os destinatários preenchidos para revisão.")
 
     st.markdown("---")
 
