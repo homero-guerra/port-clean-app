@@ -316,17 +316,17 @@ try:
                     "UID": None,
                     "Excluir": st.column_config.CheckboxColumn("❌ Excluir", help="Marque para excluir esta atividade")
                 },
+                on_change=None,
                 key=f"editor_{codigo_turno}_{data_selecionada_filtro}"
             )
             
-            # Exclusão instantânea segura mapeando pelo UID de cada linha
+            # Detetar exclusão instantânea através do re-render reativo
             uids_para_remover = []
             for idx, row in edited_df.iterrows():
-                if row.get('Excluir', False):
-                    # Extração segura com checagem de limites do DataFrame original do turno
+                if row.get('Excluir', True) is True: # Garante validação booleana estrita
                     if idx < len(df_turno_atual):
                         uid_alvo = df_turno_atual.iloc[idx].get('UID')
-                        if uid_alvo:
+                        if uid_alvo and row.get('Excluir') == True:
                             uids_para_remover.append(str(uid_alvo))
             
             if uids_para_remover:
@@ -339,14 +339,6 @@ try:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
-
-    st.divider()
-
-    # ==========================================
-    # SEÇÃO DE VISUALIZAÇÃO DOS DADOS BRUTOS DA BASE
-    # ==========================================
-    st.subheader("📑 Base de Ordens de Serviço Processadas (Reference)")
-    st.dataframe(df_os.head(50), use_container_width=True)
 
 except Exception as e:
     st.error(f"Erro ao carregar o sistema: {e}")
