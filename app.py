@@ -262,7 +262,7 @@ try:
         ("NOTURNO", "🌙 Turno Noturno")
     ]
 
-    # Função para confirmar exclusão via Dialog modal
+    # Função para confirmar exclusão via Dialog modal com fechamento correto no Cancelar
     @st.dialog("⚠️ Confirmar Exclusão de Atividade")
     def confirmar_exclusao_modal(row_data, turno_sec, index_global):
         st.write(f"Tem certeza de que deseja excluir a atividade abaixo?")
@@ -271,14 +271,13 @@ try:
         col_sim, col_nao = st.columns(2)
         with col_sim:
             if st.button("Sim, Excluir", type="primary", use_container_width=True, key=f"conf_sim_{turno_sec}_{index_global}"):
-                # Remove rigorosamente apenas o item correspondente ao índice global na lista principal
                 st.session_state.plano_operacional.pop(index_global)
                 salvar_plano_nuvem(st.session_state.plano_operacional)
                 st.success("Atividade excluída com sucesso!")
                 st.rerun()
         with col_nao:
             if st.button("Cancelar", use_container_width=True, key=f"conf_nao_{turno_sec}_{index_global}"):
-                st.rerun()
+                st.rerun() # Fecha a caixa de diálogo imediatamente
 
     for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
@@ -307,7 +306,7 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Preparar dataframe para exibição com Cód. Atividade como ID de controle
+            # Preparar dataframe para exibição
             df_exibicao = df_turno_atual.copy()
             df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             df_exibicao['Excluir'] = False
@@ -330,9 +329,7 @@ try:
             # Verificar se algum checkbox foi marcado
             for idx, row in edited_df.iterrows():
                 if row.get('Excluir', False):
-                    # Localiza o índice real global na lista st.session_state.plano_operacional
                     real_row = df_turno_atual.iloc[idx]
-                    # Encontra a posição exata na lista geral
                     global_index = None
                     for g_i, g_item in enumerate(st.session_state.plano_operacional):
                         if (g_item.get('DATA') == real_row.get('DATA') and 
