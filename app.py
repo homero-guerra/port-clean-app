@@ -262,23 +262,6 @@ try:
         ("NOTURNO", "🌙 Turno Noturno")
     ]
 
-    # Função para confirmar exclusão via Dialog modal com fechamento correto no Cancelar
-    @st.dialog("⚠️ Confirmar Exclusão de Atividade")
-    def confirmar_exclusao_modal(row_data, turno_sec, index_global):
-        st.write(f"Tem certeza de que deseja excluir a atividade abaixo?")
-        st.info(f"**Cód. Atividade:** {row_data.get('Cód. Atividade')} | **Horário:** {row_data.get('Hora Inicial')} - {row_data.get('Hora Final')}\n\n**Descrição:** {row_data.get('Dados da Atividade')}")
-        
-        col_sim, col_nao = st.columns(2)
-        with col_sim:
-            if st.button("Sim, Excluir", type="primary", use_container_width=True, key=f"conf_sim_{turno_sec}_{index_global}"):
-                st.session_state.plano_operacional.pop(index_global)
-                salvar_plano_nuvem(st.session_state.plano_operacional)
-                st.success("Atividade excluída com sucesso!")
-                st.rerun()
-        with col_nao:
-            if st.button("Cancelar", use_container_width=True, key=f"conf_nao_{turno_sec}_{index_global}"):
-                st.rerun() # Fecha a caixa de diálogo imediatamente
-
     for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
@@ -326,22 +309,28 @@ try:
                 key=f"editor_{codigo_turno}_{data_selecionada_filtro}"
             )
             
-            # Verificar se algum checkbox foi marcado
+            # Exclusão instantânea sem confirmação ao marcar o checkbox
+            ids_para_remover = []
             for idx, row in edited_df.iterrows():
                 if row.get('Excluir', False):
                     real_row = df_turno_atual.iloc[idx]
-                    global_index = None
+                    # Identificar o item global correspondente na lista principal
                     for g_i, g_item in enumerate(st.session_state.plano_operacional):
                         if (g_item.get('DATA') == real_row.get('DATA') and 
                             g_item.get('TURNO') == real_row.get('TURNO') and 
                             g_item.get('Cód. Atividade') == real_row.get('Cód. Atividade') and
                             g_item.get('Hora Inicial') == real_row.get('Hora Inicial') and
                             g_item.get('Dados da Atividade') == real_row.get('Dados da Atividade')):
-                            global_index = g_i
+                            ids_para_remover.append(g_i)
                             break
-                    
-                    if global_index is not None:
-                        confirmar_exclusao_modal(real_row, codigo_turno, global_index)
+            
+            if ids_para_remover:
+                # Remove do fim para o início para não afetar os índices
+                for index_a_remover in sorted(ids_para_remover, reverse=True):
+                    st.session_state.plano_operacional.pop(index_a_remover)
+                salvar_plano_nuvem(st.session_state.plano_operacional)
+                st.success("Atividade excluída com sucesso!")
+                st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
