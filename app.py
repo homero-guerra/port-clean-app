@@ -280,7 +280,7 @@ try:
     st.markdown("---")
 
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
@@ -321,7 +321,6 @@ try:
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
                     if linhas_selecionadas:
-                        # Recolhe todos os UIDs correspondentes às linhas selecionadas (suporta exclusão múltipla)
                         uids_a_remover = []
                         for idx_sel in linhas_selecionadas:
                             if idx_sel < len(df_turno_atual):
@@ -330,11 +329,10 @@ try:
                                     uids_a_remover.append(uid_item)
                         
                         if uids_a_remover:
-                            # Remove os itens selecionados da base
                             st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
                             salvar_plano_nuvem(st.session_state.plano_operacional)
                             
-                            # Limpa completamente o estado de seleção da tabela para desmarcar os checkboxes instantaneamente
+                            # Limpeza imediata da seleção para desmarcar os checkboxes após a exclusão
                             if selecao_key in st.session_state:
                                 del st.session_state[selecao_key]
                                 
@@ -348,12 +346,12 @@ try:
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
                 
-            df_exibicao.insert(0, '❌', range(1, len(df_exibicao) + 1)) # Cabeçalho com ícone de exclusão na coluna de seleção
+            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            colunas_exibir = ['❌', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa com seleção múltipla e largura otimizada para a coluna Nº/Ícone
+            # Grade interativa nativa com ícone ❌ no cabeçalho da coluna de seleção múltipla
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
@@ -361,7 +359,7 @@ try:
                 selection_mode="multi-row",
                 on_select="rerun",
                 column_config={
-                    "❌": st.column_config.NumberColumn("❌", width="small"),
+                    "Nº": st.column_config.NumberColumn("❌", width="small"),
                     "UID": None
                 },
                 key=f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
