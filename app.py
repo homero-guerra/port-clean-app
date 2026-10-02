@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para ajuste fino de larguras e alinhamentos
+# Estilização CSS avançada para controle de larguras da coluna numérgica e tabela
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -38,6 +38,13 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
+
+    /* Ajuste fino para travar a largura da primeira coluna (Nº) compacta para 3 dígitos */
+    [data-testid="stDataFrame"] div[data-testid="stTable"] th:nth-child(1),
+    [data-testid="stDataFrame"] div[data-testid="stTable"] td:nth-child(1) {
+        max-width: 70px !important;
+        width: 70px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -354,7 +361,7 @@ try:
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa com coluna "Nº" tradicional e limpa sem emojis
+            # Grade interativa nativa com largura restrita compacta para a coluna Nº (até 3 dígitos)
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
