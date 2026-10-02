@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para grades corporativas perfeitas e limpas sem espaços extras
+# Estilização CSS avançada para ajuste de larguras, alinhamentos e estética corporativa
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -39,7 +39,7 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Alinhamento superior dos blocos de turno com o botão de exclusão */
+    /* Alinhamento dos blocos de turno */
     .turno-header-container {
         display: flex;
         justify-content: space-between;
@@ -145,7 +145,7 @@ try:
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
-    st.sidebar.markdown("### 🎛️️ MENU DE PLANEJAMENTO")
+    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
     with st.sidebar.form("form_inserir_atividade"):
         
@@ -233,7 +233,7 @@ try:
 
         st.info(f"{descricao_atividade}")
 
-        botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
+        botao_inserir_form = st.form_submit_button("💾 Incluir na Grade", use_container_width=True)
 
         if botao_inserir_form:
             novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
@@ -257,10 +257,8 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: GRADES DE PLANEJAMENTO E FILTRO HISTÓRICO
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE DOWNLOAD ALINHADOS
     # ==========================================
-    st.markdown("### 📋 Grade de Planejamento Diário Operacional")
-    
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
     if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
@@ -268,14 +266,14 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    col_filtro, col_botao_download = st.columns([2, 2])
-    with col_filtro:
-        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1)
-    
-    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
-
-    with col_botao_download:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    # Layout unificado na mesma linha: Título, Filtro de Data e Botão de Download
+    col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
+    with col_tit_grade:
+        st.markdown("### 📋 Grade de Planejamento Diário Operacional")
+    with col_filtro_grade:
+        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
+    with col_down_grade:
+        df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
         if not df_filtrado_data.empty:
             csv_export = df_filtrado_data.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -310,8 +308,8 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho flexível alinhando o título do turno à esquerda e o botão de exclusão à direita
-            col_titulo_bloco, col_botao_excluir = st.columns([4, 1])
+            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" compacto à direita
+            col_titulo_bloco, col_botao_excluir = st.columns([5, 1])
             with col_titulo_bloco:
                 html_cabecalho = f"""
                 <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -326,7 +324,7 @@ try:
                 st.markdown(html_cabecalho, unsafe_allow_html=True)
             
             with col_botao_excluir:
-                if st.button("🗑️ Excluir Selecionado", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
@@ -336,18 +334,16 @@ try:
                         if idx_sel < len(df_turno_atual):
                             uid_a_remover = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
                             if uid_a_remover:
-                                # Remove o item correspondente
                                 st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_a_remover]
                                 salvar_plano_nuvem(st.session_state.plano_operacional)
                                 
-                                # Limpa imediatamente o estado de seleção da tabela para reiniciar o ponteiro/botão
                                 if selecao_key in st.session_state:
                                     del st.session_state[selecao_key]
                                     
-                                st.success("Atividade excluída com sucesso!")
+                                st.success("Linha excluída com sucesso!")
                                 st.rerun()
                     else:
-                        st.warning("Marque o botão de seleção na primeira coluna da linha desejada.")
+                        st.warning("Selecione a linha na tabela.")
 
             # Preparar DataFrame limpo para exibição interativa
             df_exibicao = df_turno_atual.copy()
@@ -359,7 +355,7 @@ try:
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa com restrição estrita de seleção por clique na primeira coluna/checkbox
+            # Grade interativa nativa
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
