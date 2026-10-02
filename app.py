@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada contendo todas as classes corporativas da grade e layout
+# Estilização CSS avançada para grades corporativas perfeitas e limpas sem espaços extras
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -39,61 +39,13 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Eliminar o espaçamento padrão entre as colunas do Streamlit para formar uma grade unificada */
-    [data-testid="stHorizontalBlock"] {
-        gap: 0px !important;
-    }
-
-    /* Estilização corporativa com grades e bordas completas nas células */
-    .grid-header {
-        background-color: #1a1c24;
-        color: #fafafa;
-        border-top: 1px solid #3a3a3a;
-        border-bottom: 2px solid #4a4a4a;
-        border-left: 1px solid #303030;
-        border-right: 1px solid #303030;
-        font-weight: 600;
-        font-size: 13px;
-        padding: 8px 6px;
-        text-align: left;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .grid-cell {
-        background-color: #0e1117;
-        color: #fafafa;
-        border-bottom: 1px solid #303030;
-        border-left: 1px solid #303030;
-        border-right: 1px solid #303030;
-        font-size: 13px;
-        padding: 8px 6px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .grid-cell-center {
-        background-color: #0e1117;
-        color: #a0a0a0;
-        border-bottom: 1px solid #303030;
-        border-left: 1px solid #303030;
-        border-right: 1px solid #303030;
-        font-size: 13px;
-        font-weight: bold;
-        padding: 8px 6px;
-        text-align: center;
-    }
-    .grid-header-center {
-        background-color: #1a1c24;
-        color: #fafafa;
-        border-top: 1px solid #3a3a3a;
-        border-bottom: 2px solid #4a4a4a;
-        border-left: 1px solid #303030;
-        border-right: 1px solid #303030;
-        font-weight: 600;
-        font-size: 13px;
-        padding: 8px 6px;
-        text-align: center;
+    /* Alinhamento superior dos blocos de turno com o botão de exclusão */
+    .turno-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -358,65 +310,65 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho executivo limpo
-            html_cabecalho = f"""
-            <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 8px; flex-wrap: wrap;">
-                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                <span style="color: #d0d0d0; font-size: 14px;">
-                    📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                </span>
-            </div>
-            """
-            st.markdown(html_cabecalho, unsafe_allow_html=True)
+            # Cabeçalho flexível alinhando o título do turno à esquerda e o botão de exclusão à direita
+            col_titulo_bloco, col_botao_excluir = st.columns([4, 1])
+            with col_titulo_bloco:
+                html_cabecalho = f"""
+                <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+                    <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                    <span style="color: #d0d0d0; font-size: 14px;">
+                        📌 <b>Turma:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                        &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                        &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+                    </span>
+                </div>
+                """
+                st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Proporções precisas para cada coluna da grade
-            cols_def = [0.5, 1.8, 1, 1, 1.2, 1.2, 5.5, 1.2, 0.8]
-            
-            c_h = st.columns(cols_def)
-            with c_h[0]: st.markdown("<div class='grid-header-center'>Nº</div>", unsafe_allow_html=True)
-            with c_h[1]: st.markdown("<div class='grid-header'>Cód. Atividade</div>", unsafe_allow_html=True)
-            with c_h[2]: st.markdown("<div class='grid-header'>Hora Inicial</div>", unsafe_allow_html=True)
-            with c_h[3]: st.markdown("<div class='grid-header'>Hora Final</div>", unsafe_allow_html=True)
-            with c_h[4]: st.markdown("<div class='grid-header'>Ativo</div>", unsafe_allow_html=True)
-            with c_h[5]: st.markdown("<div class='grid-header'>Retirada NR12</div>", unsafe_allow_html=True)
-            with c_h[6]: st.markdown("<div class='grid-header'>Dados da Atividade</div>", unsafe_allow_html=True)
-            with c_h[7]: st.markdown("<div class='grid-header'>Status</div>", unsafe_allow_html=True)
-            with c_h[8]: st.markdown("<div class='grid-header-center'>Excluir</div>", unsafe_allow_html=True)
+            with col_botao_excluir:
+                # Botão de exclusão alinhado no canto superior direito do bloco
+                if st.button("🗑️ Excluir Selecionado", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                    # Verifica qual linha está selecionada no st.dataframe logo abaixo
+                    selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+                    estado_grid = st.session_state.get(selecao_key, {})
+                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+                    
+                    if linhas_selecionadas:
+                        idx_sel = linhas_selecionadas[0]
+                        if idx_sel < len(df_turno_atual):
+                            uid_a_remover = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                            if uid_a_remover:
+                                st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_a_remover]
+                                salvar_plano_nuvem(st.session_state.plano_operacional)
+                                st.success("Atividade selecionada excluída com sucesso!")
+                                st.rerun()
+                    else:
+                        st.warning("Selecione primeiro uma linha na tabela abaixo clicando nela.")
 
-            # Renderização de linhas com grade completa, bordas e alinhamentos perfeitos
-            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                uid_alvo = str(row.get('UID', f'fallback_{sub_idx}'))
+            # Preparar DataFrame limpo para exibição interativa (sem coluna de exclusão na tabela)
+            df_exibicao = df_turno_atual.copy()
+            if 'UID' not in df_exibicao.columns:
+                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
                 
-                c_r = st.columns(cols_def)
-                
-                with c_r[0]:
-                    st.markdown(f"<div class='grid-cell-center'>{sub_idx}</div>", unsafe_allow_html=True)
-                with c_r[1]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Cód. Atividade', ''))}</div>", unsafe_allow_html=True)
-                with c_r[2]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Hora Inicial', ''))}</div>", unsafe_allow_html=True)
-                with c_r[3]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Hora Final', ''))}</div>", unsafe_allow_html=True)
-                with c_r[4]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Ativo', ''))}</div>", unsafe_allow_html=True)
-                with c_r[5]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Retirada NR12', ''))}</div>", unsafe_allow_html=True)
-                with c_r[6]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Dados da Atividade', ''))}</div>", unsafe_allow_html=True)
-                with c_r[7]:
-                    st.markdown(f"<div class='grid-cell'>{str(row.get('Status', ''))}</div>", unsafe_allow_html=True)
-                with c_r[8]:
-                    st.markdown("<div style='background-color: #0e1117; border-bottom: 1px solid #303030; border-left: 1px solid #303030; border-right: 1px solid #303030; padding: 2px 4px; text-align: center;'>", unsafe_allow_html=True)
-                    if st.button("❌", key=f"del_{codigo_turno}_{uid_alvo}", help=f"Excluir item {sub_idx}"):
-                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_alvo]
-                        salvar_plano_nuvem(st.session_state.plano_operacional)
-                        st.success("Atividade excluída com sucesso!")
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
+            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
+            
+            # Grade interativa nativa e limpa (permite selecionar a linha inteira com um clique)
+            st.dataframe(
+                df_final_exibir,
+                use_container_width=True,
+                hide_index=True,
+                selection_mode="single-row",
+                on_select="rerun",
+                column_config={
+                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "UID": None
+                },
+                key=f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+            )
+            
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
