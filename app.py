@@ -5,12 +5,12 @@ import os
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="Plano de Limpeza do Dia",
+    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
     page_icon="⚓",
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout e alinhamentos
+# Estilização CSS avançada incluindo as linhas de grade corporativas nas tabelas
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,37 +30,33 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Estilização da tabela com bordas corporativas idênticas às originais */
-    .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-        font-size: 14px;
+    /* Estilização corporativa com linhas de grade (borders) visíveis em cada célula */
+    .grid-row {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #303030;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
         background-color: #0e1117;
+        font-size: 14px;
         color: #fafafa;
     }
-    .custom-table th {
+    .grid-header {
+        display: flex;
+        align-items: center;
         background-color: #1a1c24;
-        color: #fafafa;
         border: 1px solid #303030;
-        padding: 8px 10px;
-        text-align: left;
         font-weight: 600;
+        font-size: 14px;
+        color: #fafafa;
+        padding: 4px 0px;
     }
-    .custom-table td {
-        border: 1px solid #303030;
+    .grid-cell {
         padding: 8px 10px;
-        vertical-align: middle;
-    }
-    .col-num {
-        width: 40px !important;
-        text-align: center !important;
-        font-weight: bold;
-        color: #a0a0a0;
-    }
-    .col-acao {
-        width: 60px !important;
-        text-align: center !important;
+        border-right: 1px solid #303030;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -328,35 +324,50 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Renderização de linhas estruturadas de forma 100% segura com botões por UID absoluto
+            # Cabeçalho da Tabela com linhas de grade corporativas
+            cols_def = [0.5, 1.8, 1, 1, 1.2, 1.2, 5.5, 1.2, 0.8]
+            
+            c_h = st.columns(cols_def)
+            with c_h[0]: st.markdown("<div class='grid-header' style='justify-content: center;'>Nº</div>", unsafe_allow_html=True)
+            with c_h[1]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Cód. Atividade</div>", unsafe_allow_html=True)
+            with c_h[2]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Hora Inicial</div>", unsafe_allow_html=True)
+            with c_h[3]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Hora Final</div>", unsafe_allow_html=True)
+            with c_h[4]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Ativo</div>", unsafe_allow_html=True)
+            with c_h[5]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Retirada NR12</div>", unsafe_allow_html=True)
+            with c_h[6]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Dados da Atividade</div>", unsafe_allow_html=True)
+            with c_h[7]: st.markdown("<div class='grid-header' style='padding-left: 10px;'>Status</div>", unsafe_allow_html=True)
+            with c_h[8]: st.markdown("<div class='grid-header' style='justify-content: center;'>Excluir</div>", unsafe_allow_html=True)
+
+            # Renderização de linhas com bordas e grade visíveis perfeitamente alinhadas
             for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
                 uid_alvo = str(row.get('UID', f'fallback_{sub_idx}'))
                 
-                c_num, c_cod, c_hi, c_hf, c_ativ, c_nr12, c_desc, c_st, c_del = st.columns([0.5, 1.8, 1, 1, 1.2, 1.2, 5.5, 1.2, 0.8])
+                c_r = st.columns(cols_def)
                 
-                with c_num:
-                    st.markdown(f"<div style='text-align: center; padding-top: 5px; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
-                with c_cod:
-                    st.text(str(row.get('Cód. Atividade', '')))
-                with c_hi:
-                    st.text(str(row.get('Hora Inicial', '')))
-                with c_hf:
-                    st.text(str(row.get('Hora Final', '')))
-                with c_ativ:
-                    st.text(str(row.get('Ativo', '')))
-                with c_nr12:
-                    st.text(str(row.get('Retirada NR12', '')))
-                with c_desc:
-                    st.text(str(row.get('Dados da Atividade', '')))
-                with c_st:
-                    st.text(str(row.get('Status', '')))
-                with c_del:
+                with c_r[0]:
+                    st.markdown(f"<div class='grid-cell' style='text-align: center; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
+                with c_r[1]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Cód. Atividade', ''))}</div>", unsafe_allow_html=True)
+                with c_r[2]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Hora Inicial', ''))}</div>", unsafe_allow_html=True)
+                with c_r[3]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Hora Final', ''))}</div>", unsafe_allow_html=True)
+                with c_r[4]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Ativo', ''))}</div>", unsafe_allow_html=True)
+                with c_r[5]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Retirada NR12', ''))}</div>", unsafe_allow_html=True)
+                with c_r[6]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Dados da Atividade', ''))}</div>", unsafe_allow_html=True)
+                with c_r[7]:
+                    st.markdown(f"<div class='grid-cell'>{str(row.get('Status', ''))}</div>", unsafe_allow_html=True)
+                with c_r[8]:
                     if st.button("❌", key=f"del_{codigo_turno}_{uid_alvo}", help=f"Excluir item {sub_idx}"):
-                        # Remove rigorosamente apenas o registo correspondente ao UID absoluto
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_alvo]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
                         st.rerun()
+            
+            st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
