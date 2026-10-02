@@ -42,7 +42,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel alinhado no topo absoluto com o novo emoji ✨
+# Título principal do painel alinhado no topo absoluto com o emoji ✨
 st.markdown("<h1>✨ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
 st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
@@ -289,13 +289,17 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
+        # Obter o nome do responsável ativo no painel (chefe de turno selecionado)
+        responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
+        
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
         corpo = f"""Prezados(as),
 
-Segue em anexo o relatório oficial consolidado do Plano de Limpeza Diário correspondente à data {data_selecionada_filtro}.
+Segue o Plano de Limpeza para o dia {data_selecionada_filtro}.
 
 Atenciosamente,
-Gerência de Operações / PCP Ferroport"""
+
+{responsavel_planejamento}"""
         
         # Codificar assunto e corpo para URL (protocolo mailto)
         assunto_encoded = urllib.parse.quote(assunto)
@@ -305,7 +309,7 @@ Gerência de Operações / PCP Ferroport"""
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook acionado! A mensagem foi aberta com os destinatários preenchidos para revisão.")
+        st.success("Outlook acionado! A mensagem foi aberta com os destinatários e a assinatura preenchidos para revisão.")
 
     st.markdown("---")
 
