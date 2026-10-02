@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para alinhar perfeitamente as grades, bordas e botões de exclusão
+# Estilização CSS avançada para otimizar o layout e largura da coluna Nº
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -29,39 +29,6 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Estilização corporativa perfeita da tabela com bordas idênticas às originais */
-    .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 15px;
-        font-size: 14px;
-        background-color: #0e1117;
-        color: #fafafa;
-    }
-    .custom-table th {
-        background-color: #1a1c24;
-        color: #fafafa;
-        border: 1px solid #303030;
-        padding: 10px 12px;
-        text-align: left;
-        font-weight: 600;
-    }
-    .custom-table td {
-        border: 1px solid #303030;
-        padding: 10px 12px;
-        vertical-align: middle;
-    }
-    .col-num {
-        width: 45px !important;
-        text-align: center !important;
-        font-weight: bold;
-        color: #a0a0a0;
-    }
-    .col-acao {
-        width: 60px !important;
-        text-align: center !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -328,47 +295,42 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Renderização corporativa da tabela idêntica à original
-            html_tabela = '<table class="custom-table">'
-            html_tabela += '<thead><tr>'
-            html_tabela += '<th class="col-num">Nº</th>'
-            html_tabela += '<th>Cód. Atividade</th>'
-            html_tabela += '<th>Hora Inicial</th>'
-            html_tabela += '<th>Hora Final</th>'
-            html_tabela += '<th>Ativo</th>'
-            html_tabela += '<th>Retirada NR12</th>'
-            html_tabela += '<th>Dados da Atividade</th>'
-            html_tabela += '<th>Status</th>'
-            html_tabela += '<th class="col-acao">Excluir</th>'
-            html_tabela += '</tr></thead><tbody>'
+            # Preparar o DataFrame para o editor interativo nativo com coluna de exclusão (checkbox)
+            df_editor = df_turno_atual.copy()
+            df_editor.insert(0, 'Nº', range(1, len(df_editor) + 1))
+            df_editor['Excluir'] = False # Checkbox para apagar a linha
             
-            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                html_tabela += '<tr>'
-                html_tabela += f'<td class="col-num">{sub_idx}</td>'
-                html_tabela += f'<td>{row.get("Cód. Atividade", "")}</td>'
-                html_tabela += f'<td>{row.get("Hora Inicial", "")}</td>'
-                html_tabela += f'<td>{row.get("Hora Final", "")}</td>'
-                html_tabela += f'<td>{row.get("Ativo", "")}</td>'
-                html_tabela += f'<td>{row.get("Retirada NR12", "")}</td>'
-                html_tabela += f'<td>{row.get("Dados da Atividade", "")}</td>'
-                html_tabela += f'<td>{row.get("Status", "")}</td>'
-                html_tabela += f'<td class="col-acao" style="text-align: center;">-</td>' # Espaço marcador
-                html_tabela += '</tr>'
+            colunas_editor = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
+            df_final_editor = df_editor[[c for c in colunas_editor if c in df_editor.columns]]
             
-            html_tabela += '</tbody></table>'
-            st.markdown(html_tabela, unsafe_allow_html=True)
+            # Renderizar tabela corporativa nativa onde o usuário pode marcar o checkbox "Excluir"
+            edited_df = st.data_editor(
+                df_final_editor,
+                use_container_width=True,
+                hide_index=True,
+                disabled=[c for c in df_final_editor.columns if c != 'Excluir'],
+                column_config={
+                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "Excluir": st.column_config.CheckboxColumn("❌ Excluir", help="Marque para excluir esta atividade")
+                },
+                key=f"editor_{codigo_turno}"
+            )
             
-            # Botões de exclusão "❌" compactos alinhados exatamente na última coluna da tabela
-            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                reg_id = str(row.get('ID', ''))
-                # Usamos colunas proporcionais para posicionar o botão ❌ perfeitamente alinhado à direita
-                _, col_btn = st.columns([23, 1])
-                with col_btn:
-                    if st.button("❌", key=f"del_align_{reg_id}_{sub_idx}", help=f"Excluir atividade {sub_idx}"):
-                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) != reg_id]
-                        salvar_plano_nuvem(st.session_state.plano_operacional)
-                        st.success("Atividade excluída com sucesso!")
-                        st.rerun()
+            # Verificar se algum checkbox de exclusão foi marcado
+            if not edited_df[edited_df['Excluir'] == True].empty:
+                # Identificar os IDs das linhas marcadas para exclusão
+                ids_para_remover = []
+                for idx, row in edited_df.iterrows():
+                    if row['Excluir']:
+                        # Recupera o ID real correspondente no dataframe original do turno
+                        real_id = df_turno_atual.iloc[idx].get('ID')
+                        ids_para_remover.append(str(real_id))
+                
+                if ids_para_remover:
+                    st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) not in ids_para_remover]
+                    salvar_plano_nuvem(st.session_state.plano_operacional)
+                    st.success("Atividade(s) excluída(s) com sucesso!")
+                    st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
