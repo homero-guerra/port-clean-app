@@ -64,11 +64,14 @@ try:
         if os.path.exists(ARQUIVO_BANCO_DADOS):
             try:
                 df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
+                if 'UID' not in df_persisted.columns:
+                    df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
         return [
             {
+                "UID": "UID_1_001",
                 "TURMA": "AMARELA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "DIURNO", 
@@ -82,6 +85,7 @@ try:
                 "Status": "Em Execução"
             },
             {
+                "UID": "UID_2_002",
                 "TURMA": "BRANCA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
@@ -196,7 +200,9 @@ try:
         botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
 
         if botao_inserir_form:
+            novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
             novo_registro = {
+                "UID": novo_uid,
                 "TURMA": turma_form,
                 "CHEFE DE TURNO": chefe_form,
                 "TURNO": turno_form,
@@ -291,10 +297,13 @@ try:
             
             # Preparar dataframe para exibição
             df_exibicao = df_turno_atual.copy()
+            if 'UID' not in df_exibicao.columns:
+                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
+                
             df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             df_exibicao['Excluir'] = False
             
-            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
             edited_df = st.data_editor(
@@ -304,32 +313,27 @@ try:
                 disabled=[c for c in df_final_exibir.columns if c != 'Excluir'],
                 column_config={
                     "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "UID": None,
                     "Excluir": st.column_config.CheckboxColumn("❌ Excluir", help="Marque para excluir esta atividade")
                 },
                 key=f"editor_{codigo_turno}_{data_selecionada_filtro}"
             )
             
-            # Exclusão instantânea segura com verificação de tamanho do DataFrame
-            ids_para_remover = []
-            if not edited_df.empty and len(edited_df) == len(df_turno_atual):
-                for idx, row in edited_df.iterrows():
-                    if row.get('Excluir', False):
-                        real_row = df_turno_atual.iloc[idx]
-                        for g_i, g_item in enumerate(st.session_state.plano_operacional):
-                            if (g_item.get('DATA') == real_row.get('DATA') and 
-                                g_item.get('TURNO') == real_row.get('TURNO') and 
-                                g_item.get('Cód. Atividade') == real_row.get('Cód. Atividade') and
-                                g_item.get('Hora Inicial') == real_row.get('Hora Inicial') and
-                                g_item.get('Dados da Atividade') == real_row.get('Dados da Atividade')):
-                                ids_para_remover.append(g_i)
-                                break
-                
-                if ids_para_remover:
-                    for index_a_remover in sorted(ids_para_remover, reverse=True):
-                        st.session_state.plano_operacional.pop(index_a_remover)
-                    salvar_plano_nuvem(st.session_state.plano_operacional)
-                    st.success("Atividade excluída com sucesso!")
-                    st.rerun()
+            # Exclusão instantânea segura mapeando pelo UID de cada linha
+            uids_para_remover = []
+            for idx, row in edited_df.iterrows():
+                if row.get('Excluir', False):
+                    # Extração segura com checagem de limites do DataFrame original do turno
+                    if idx < len(df_turno_atual):
+                        uid_alvo = df_turno_atual.iloc[idx].get('UID')
+                        if uid_alvo:
+                            uids_para_remover.append(str(uid_alvo))
+            
+            if uids_para_remover:
+                st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_para_remover]
+                salvar_plano_nuvem(st.session_state.plano_operacional)
+                st.success("Atividade excluída com sucesso!")
+                st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
