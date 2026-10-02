@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para controle de fontes, larguras e alinhamentos
+# Estilização CSS avançada para alinhamentos e estética corporativa
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -277,13 +277,13 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO ALINHADA
+    # CAMPO: LISTA DE DISTRIBUIÇÃO ALINHADA HORIZONTALMENTE
     # ==========================================
-    col_lbl_email, col_input_email, col_btn_email = st.columns([1.6, 5.4, 1.5])
-    with col_lbl_email:
-        st.markdown("<p style='font-size: 14px; font-weight: bold; margin-top: 8px;'>Lista de Distribuição:</p>", unsafe_allow_html=True)
+    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
+    with col_lbl_dist:
+        st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
-        lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br", label_visibility="collapsed")
+        lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br", label_visibility="collapsed")
     with col_btn_email:
         btn_prever_envio = st.button("✉️ Enviar Plano", use_container_width=True)
 
