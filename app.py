@@ -280,7 +280,7 @@ try:
     st.markdown("---")
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
@@ -299,7 +299,10 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" compacto à direita
+            # Chave única para o estado da grade deste bloco
+            selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+            
+            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" à direita
             col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.0, 1.4])
             with col_titulo_bloco:
                 html_cabecalho = f"""
@@ -316,7 +319,6 @@ try:
             
             with col_botao_excluir:
                 if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
@@ -332,9 +334,10 @@ try:
                             st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
                             salvar_plano_nuvem(st.session_state.plano_operacional)
                             
-                            # Limpeza imediata da seleção para desmarcar os checkboxes após a exclusão
+                            # Limpeza total e absoluta do estado do widget para desmarcar os checkboxes imediatamente
                             if selecao_key in st.session_state:
                                 del st.session_state[selecao_key]
+                            st.session_state[selecao_key] = {"selection": {"rows": []}}
                                 
                             st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
                             st.rerun()
@@ -351,7 +354,7 @@ try:
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa com ícone ❌ no cabeçalho da coluna de seleção múltipla
+            # Grade interativa nativa com coluna "Nº" tradicional e limpa sem emojis
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
@@ -359,10 +362,10 @@ try:
                 selection_mode="multi-row",
                 on_select="rerun",
                 column_config={
-                    "Nº": st.column_config.NumberColumn("❌", width="small"),
+                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
                     "UID": None
                 },
-                key=f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+                key=selecao_key
             )
             
         else:
