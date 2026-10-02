@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para controle de larguras e alinhamentos
+# Estilização CSS avançada para ajuste fino de larguras e alinhamentos
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -185,7 +185,7 @@ try:
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
-        # Injetar cor dinâmica baseada na Turma selecionada diretamente nos inputs de seleção
+        # Injetar cor dinâmica baseada na Turma selecionada de forma segura
         cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
         css_dinamico = f"""
         <style>
@@ -299,8 +299,8 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" mais estreito à direita
-            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.2, 1.2])
+            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" compacto à direita
+            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.0, 1.4])
             with col_titulo_bloco:
                 html_cabecalho = f"""
                 <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -321,40 +321,47 @@ try:
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
                     if linhas_selecionadas:
-                        idx_sel = linhas_selecionadas[0]
-                        if idx_sel < len(df_turno_atual):
-                            uid_a_remover = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                            if uid_a_remover:
-                                st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_a_remover]
-                                salvar_plano_nuvem(st.session_state.plano_operacional)
+                        # Recolhe todos os UIDs correspondentes às linhas selecionadas (suporta exclusão múltipla)
+                        uids_a_remover = []
+                        for idx_sel in linhas_selecionadas:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
+                        
+                        if uids_a_remover:
+                            # Remove os itens selecionados da base
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            
+                            # Limpa completamente o estado de seleção da tabela para desmarcar os checkboxes instantaneamente
+                            if selecao_key in st.session_state:
+                                del st.session_state[selecao_key]
                                 
-                                if selecao_key in st.session_state:
-                                    del st.session_state[selecao_key]
-                                    
-                                st.success("Linha excluída com sucesso!")
-                                st.rerun()
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
                     else:
-                        st.warning("Selecione a linha na tabela.")
+                        st.warning("Selecione pelo menos uma linha na tabela.")
 
             # Preparar DataFrame limpo para exibição interativa
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
                 
-            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
+            df_exibicao.insert(0, '❌', range(1, len(df_exibicao) + 1)) # Cabeçalho com ícone de exclusão na coluna de seleção
             
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            colunas_exibir = ['❌', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa
+            # Grade interativa nativa com seleção múltipla e largura otimizada para a coluna Nº/Ícone
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
                 hide_index=True,
-                selection_mode="single-row",
+                selection_mode="multi-row",
                 on_select="rerun",
                 column_config={
-                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "❌": st.column_config.NumberColumn("❌", width="small"),
                     "UID": None
                 },
                 key=f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
