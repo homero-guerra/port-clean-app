@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para otimizar o layout e largura da coluna Nº
+# Estilização CSS avançada para otimizar o layout e alinhamentos
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -64,14 +64,11 @@ try:
         if os.path.exists(ARQUIVO_BANCO_DADOS):
             try:
                 df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
-                if 'ID' not in df_persisted.columns:
-                    df_persisted['ID'] = [f"ID_{i+1}" for i in range(len(df_persisted))]
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
         return [
             {
-                "ID": "ID_01", 
                 "TURMA": "AMARELA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "DIURNO", 
@@ -85,7 +82,6 @@ try:
                 "Status": "Em Execução"
             },
             {
-                "ID": "ID_02", 
                 "TURMA": "BRANCA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
@@ -200,9 +196,7 @@ try:
         botao_inserir_form = st.form_submit_button("💾 Salvar na Grade", use_container_width=True)
 
         if botao_inserir_form:
-            novo_id = f"ID_{int(datetime.now().timestamp())}"
             novo_registro = {
-                "ID": novo_id,
                 "TURMA": turma_form,
                 "CHEFE DE TURNO": chefe_form,
                 "TURNO": turno_form,
@@ -268,6 +262,24 @@ try:
         ("NOTURNO", "🌙 Turno Noturno")
     ]
 
+    # Função para confirmar exclusão via Dialog modal
+    @st.dialog("⚠️ Confirmar Exclusão de Atividade")
+    def confirmar_exclusao_modal(row_data, turno_sec, index_global):
+        st.write(f"Tem certeza de que deseja excluir a atividade abaixo?")
+        st.info(f"**Cód. Atividade:** {row_data.get('Cód. Atividade')} | **Horário:** {row_data.get('Hora Inicial')} - {row_data.get('Hora Final')}\n\n**Descrição:** {row_data.get('Dados da Atividade')}")
+        
+        col_sim, col_nao = st.columns(2)
+        with col_sim:
+            if st.button("Sim, Excluir", type="primary", use_container_width=True, key=f"conf_sim_{turno_sec}_{index_global}"):
+                # Remove rigorosamente apenas o item correspondente ao índice global na lista principal
+                st.session_state.plano_operacional.pop(index_global)
+                salvar_plano_nuvem(st.session_state.plano_operacional)
+                st.success("Atividade excluída com sucesso!")
+                st.rerun()
+        with col_nao:
+            if st.button("Cancelar", use_container_width=True, key=f"conf_nao_{turno_sec}_{index_global}"):
+                st.rerun()
+
     for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
@@ -295,42 +307,44 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Preparar o DataFrame para o editor interativo nativo com coluna de exclusão (checkbox)
-            df_editor = df_turno_atual.copy()
-            df_editor.insert(0, 'Nº', range(1, len(df_editor) + 1))
-            df_editor['Excluir'] = False # Checkbox para apagar a linha
+            # Preparar dataframe para exibição com Cód. Atividade como ID de controle
+            df_exibicao = df_turno_atual.copy()
+            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
+            df_exibicao['Excluir'] = False
             
-            colunas_editor = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
-            df_final_editor = df_editor[[c for c in colunas_editor if c in df_editor.columns]]
+            colunas_exibir = ['Nº', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Excluir']
+            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Renderizar tabela corporativa nativa onde o usuário pode marcar o checkbox "Excluir"
             edited_df = st.data_editor(
-                df_final_editor,
+                df_final_exibir,
                 use_container_width=True,
                 hide_index=True,
-                disabled=[c for c in df_final_editor.columns if c != 'Excluir'],
+                disabled=[c for c in df_final_exibir.columns if c != 'Excluir'],
                 column_config={
                     "Nº": st.column_config.NumberColumn("Nº", width="small"),
                     "Excluir": st.column_config.CheckboxColumn("❌ Excluir", help="Marque para excluir esta atividade")
                 },
-                key=f"editor_{codigo_turno}"
+                key=f"editor_{codigo_turno}_{data_selecionada_filtro}"
             )
             
-            # Verificar se algum checkbox de exclusão foi marcado
-            if not edited_df[edited_df['Excluir'] == True].empty:
-                # Identificar os IDs das linhas marcadas para exclusão
-                ids_para_remover = []
-                for idx, row in edited_df.iterrows():
-                    if row['Excluir']:
-                        # Recupera o ID real correspondente no dataframe original do turno
-                        real_id = df_turno_atual.iloc[idx].get('ID')
-                        ids_para_remover.append(str(real_id))
-                
-                if ids_para_remover:
-                    st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) not in ids_para_remover]
-                    salvar_plano_nuvem(st.session_state.plano_operacional)
-                    st.success("Atividade(s) excluída(s) com sucesso!")
-                    st.rerun()
+            # Verificar se algum checkbox foi marcado
+            for idx, row in edited_df.iterrows():
+                if row.get('Excluir', False):
+                    # Localiza o índice real global na lista st.session_state.plano_operacional
+                    real_row = df_turno_atual.iloc[idx]
+                    # Encontra a posição exata na lista geral
+                    global_index = None
+                    for g_i, g_item in enumerate(st.session_state.plano_operacional):
+                        if (g_item.get('DATA') == real_row.get('DATA') and 
+                            g_item.get('TURNO') == real_row.get('TURNO') and 
+                            g_item.get('Cód. Atividade') == real_row.get('Cód. Atividade') and
+                            g_item.get('Hora Inicial') == real_row.get('Hora Inicial') and
+                            g_item.get('Dados da Atividade') == real_row.get('Dados da Atividade')):
+                            global_index = g_i
+                            break
+                    
+                    if global_index is not None:
+                        confirmar_exclusao_modal(real_row, codigo_turno, global_index)
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
