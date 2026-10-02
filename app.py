@@ -19,7 +19,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para controle de larguras da coluna numérgica e tabela
+# Estilização CSS avançada para controle de larguras, alinhamentos e estética corporativa
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -38,13 +38,6 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Ajuste fino para travar a largura da primeira coluna (Nº) compacta para 3 dígitos */
-    [data-testid="stDataFrame"] div[data-testid="stTable"] th:nth-child(1),
-    [data-testid="stDataFrame"] div[data-testid="stTable"] td:nth-child(1) {
-        max-width: 70px !important;
-        width: 70px !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -264,7 +257,7 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    # Layout unificado na mesma linha: Título, Filtro de Data e Botão de Download
+    # Layout unificado na mesma linha: Título e Filtro de Data
     col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
@@ -283,6 +276,48 @@ try:
             )
         else:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
+
+    # ==========================================
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E PRÉ-VISUALIZAÇÃO DE E-MAIL
+    # ==========================================
+    st.markdown("#### Lista de Distribuição:")
+    col_email_input, col_email_btn = st.columns([3, 1])
+    with col_email_input:
+        lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br", label_visibility="collapsed")
+    with col_email_btn:
+        btn_prever_envio = st.button("✉️ Enviar Plano por E-mail", use_container_width=True)
+
+    if btn_prever_envio:
+        st.session_state['mostrar_preview_email'] = True
+
+    if st.session_state.get('mostrar_preview_email', False):
+        st.markdown("---")
+        st.markdown("#### 👁️ Pré-visualização da Mensagem de E-mail")
+        with st.container():
+            st.info(f"**Para:** {lista_emails}")
+            st.markdown(f"**Assunto:** [Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}")
+            st.markdown(f"""
+            Prezados(as),\n\n
+            Segue em anexo o relatório oficial consolidado do **Plano de Limpeza Diário** correspondente à data **{data_selecionada_filtro}**.\n\n
+            Atenciosamente,\n
+            **Gerência de Operações / PCP Ferroport**
+            """)
+            if not df_filtrado_data.empty:
+                st.caption(f"📎 Anexo pronto: `Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv` ({len(df_filtrado_data)} atividades registadas)")
+            else:
+                st.warning("⚠️ Atenção: Não existem atividades registadas para esta data para anexar ao relatório.")
+            
+            c_env1, c_env2 = st.columns([1, 1])
+            with c_env1:
+                if st.button("🚀 Confirmar e Enviar E-mail", type="primary", use_container_width=True):
+                    st.success("E-mail enviado com sucesso para a lista de distribuição!")
+                    st.session_state['mostrar_preview_email'] = False
+                    st.rerun()
+            with c_env2:
+                if st.button("❌ Cancelar", use_container_width=True):
+                    st.session_state['mostrar_preview_email'] = False
+                    st.rerun()
+        st.markdown("---")
 
     st.markdown("---")
 
@@ -306,10 +341,8 @@ try:
             else:
                 cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
             
-            # Chave única para o estado da grade deste bloco
             selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
             
-            # Cabeçalho flexível com título do turno à esquerda e botão "Excluir Linha" à direita
             col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.0, 1.4])
             with col_titulo_bloco:
                 html_cabecalho = f"""
@@ -341,7 +374,6 @@ try:
                             st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
                             salvar_plano_nuvem(st.session_state.plano_operacional)
                             
-                            # Limpeza total e absoluta do estado do widget para desmarcar os checkboxes imediatamente
                             if selecao_key in st.session_state:
                                 del st.session_state[selecao_key]
                             st.session_state[selecao_key] = {"selection": {"rows": []}}
@@ -351,7 +383,6 @@ try:
                     else:
                         st.warning("Selecione pelo menos uma linha na tabela.")
 
-            # Preparar DataFrame limpo para exibição interativa
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
@@ -361,7 +392,6 @@ try:
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            # Grade interativa nativa com largura restrita compacta para a coluna Nº (até 3 dígitos)
             st.dataframe(
                 df_final_exibir,
                 use_container_width=True,
