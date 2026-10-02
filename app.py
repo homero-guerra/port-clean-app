@@ -29,6 +29,39 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
+
+    /* Estilização da tabela com bordas corporativas idênticas às originais */
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 14px;
+        background-color: #0e1117;
+        color: #fafafa;
+    }
+    .custom-table th {
+        background-color: #1a1c24;
+        color: #fafafa;
+        border: 1px solid #303030;
+        padding: 8px 10px;
+        text-align: left;
+        font-weight: 600;
+    }
+    .custom-table td {
+        border: 1px solid #303030;
+        padding: 8px 10px;
+        vertical-align: middle;
+    }
+    .col-num {
+        width: 40px !important;
+        text-align: center !important;
+        font-weight: bold;
+        color: #a0a0a0;
+    }
+    .col-acao {
+        width: 60px !important;
+        text-align: center !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -295,38 +328,31 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Preparar dataframe para exibição integrada com seleção por clique em linha
-            df_exibicao = df_turno_atual.copy()
-            if 'UID' not in df_exibicao.columns:
-                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
+            # Renderização de linhas estruturadas de forma 100% segura com botões por UID absoluto
+            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
+                uid_alvo = str(row.get('UID', f'fallback_{sub_idx}'))
                 
-            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
-            df_exibicao['Ação'] = '❌ Excluir'
-            
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Ação']
-            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
-            
-            event = st.dataframe(
-                df_final_exibir,
-                use_container_width=True,
-                hide_index=True,
-                selection_mode="single-row",
-                on_select="rerun",
-                column_config={
-                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
-                    "UID": None,
-                    "Ação": st.column_config.TextColumn("Excluir", help="Clique na linha para excluir")
-                },
-                key=f"grid_{codigo_turno}_{data_selecionada_filtro}"
-            )
-            
-            # Capturar seleção de linha para exclusão imediata e segura
-            selected_rows = event.selection.get("rows", []) if event and hasattr(event, "selection") else []
-            if selected_rows:
-                idx_selecionado = selected_rows[0]
-                if idx_selecionado < len(df_turno_atual):
-                    uid_alvo = str(df_turno_atual.iloc[idx_selecionado].get('UID', ''))
-                    if uid_alvo:
+                c_num, c_cod, c_hi, c_hf, c_ativ, c_nr12, c_desc, c_st, c_del = st.columns([0.5, 1.8, 1, 1, 1.2, 1.2, 5.5, 1.2, 0.8])
+                
+                with c_num:
+                    st.markdown(f"<div style='text-align: center; padding-top: 5px; font-weight: bold; color: #a0a0a0;'>{sub_idx}</div>", unsafe_allow_html=True)
+                with c_cod:
+                    st.text(str(row.get('Cód. Atividade', '')))
+                with c_hi:
+                    st.text(str(row.get('Hora Inicial', '')))
+                with c_hf:
+                    st.text(str(row.get('Hora Final', '')))
+                with c_ativ:
+                    st.text(str(row.get('Ativo', '')))
+                with c_nr12:
+                    st.text(str(row.get('Retirada NR12', '')))
+                with c_desc:
+                    st.text(str(row.get('Dados da Atividade', '')))
+                with c_st:
+                    st.text(str(row.get('Status', '')))
+                with c_del:
+                    if st.button("❌", key=f"del_{codigo_turno}_{uid_alvo}", help=f"Excluir item {sub_idx}"):
+                        # Remove rigorosamente apenas o registo correspondente ao UID absoluto
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_alvo]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
