@@ -5,7 +5,7 @@ import os
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
-    page_title="Port Cleanliness Planner - Gestão de Limpeza Industrial",
+    page_title="Plano de Limpeza do Dia",
     page_icon="⚓",
     layout="wide"
 )
