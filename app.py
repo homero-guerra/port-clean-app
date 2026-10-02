@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilização CSS avançada para as grades com bordas estilizadas, coluna Nº estreita e layout limpo
+# Estilização CSS avançada para alinhar perfeitamente as grades, bordas e botões de exclusão
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -30,11 +30,11 @@ st.markdown("""
     
     div[data-testid="stButton"] button { font-weight: bold; }
 
-    /* Estilização da tabela com bordas corporativas idênticas às anteriores */
+    /* Estilização corporativa perfeita da tabela com bordas idênticas às originais */
     .custom-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
         font-size: 14px;
         background-color: #0e1117;
         color: #fafafa;
@@ -43,23 +43,23 @@ st.markdown("""
         background-color: #1a1c24;
         color: #fafafa;
         border: 1px solid #303030;
-        padding: 8px 10px;
+        padding: 10px 12px;
         text-align: left;
         font-weight: 600;
     }
     .custom-table td {
         border: 1px solid #303030;
-        padding: 8px 10px;
+        padding: 10px 12px;
         vertical-align: middle;
     }
     .col-num {
-        width: 40px !important;
+        width: 45px !important;
         text-align: center !important;
         font-weight: bold;
         color: #a0a0a0;
     }
     .col-acao {
-        width: 50px !important;
+        width: 60px !important;
         text-align: center !important;
     }
 </style>
@@ -328,7 +328,7 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Renderização da tabela estilizada com bordas corporativas
+            # Renderização corporativa da tabela idêntica à original
             html_tabela = '<table class="custom-table">'
             html_tabela += '<thead><tr>'
             html_tabela += '<th class="col-num">Nº</th>'
@@ -352,18 +352,19 @@ try:
                 html_tabela += f'<td>{row.get("Retirada NR12", "")}</td>'
                 html_tabela += f'<td>{row.get("Dados da Atividade", "")}</td>'
                 html_tabela += f'<td>{row.get("Status", "")}</td>'
-                html_tabela += f'<td class="col-acao">...</td>'  # Espaço reservado para o botão Streamlit abaixo
+                html_tabela += f'<td class="col-acao" style="text-align: center;">-</td>' # Espaço marcador
                 html_tabela += '</tr>'
             
             html_tabela += '</tbody></table>'
             st.markdown(html_tabela, unsafe_allow_html=True)
             
-            # Botões de exclusão alinhados por linha abaixo da tabela estilizada
+            # Botões de exclusão "❌" compactos alinhados exatamente na última coluna da tabela
             for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
                 reg_id = str(row.get('ID', ''))
-                c_txt, c_btn = st.columns([11, 1])
-                with c_btn:
-                    if st.button("❌", key=f"del_h_{reg_id}_{sub_idx}", help=f"Excluir item {sub_idx}"):
+                # Usamos colunas proporcionais para posicionar o botão ❌ perfeitamente alinhado à direita
+                _, col_btn = st.columns([23, 1])
+                with col_btn:
+                    if st.button("❌", key=f"del_align_{reg_id}_{sub_idx}", help=f"Excluir atividade {sub_idx}"):
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('ID')) != reg_id]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
