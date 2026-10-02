@@ -309,28 +309,27 @@ try:
                 key=f"editor_{codigo_turno}_{data_selecionada_filtro}"
             )
             
-            # Exclusão instantânea sem confirmação ao marcar o checkbox
+            # Exclusão instantânea segura com verificação de tamanho do DataFrame
             ids_para_remover = []
-            for idx, row in edited_df.iterrows():
-                if row.get('Excluir', False):
-                    real_row = df_turno_atual.iloc[idx]
-                    # Identificar o item global correspondente na lista principal
-                    for g_i, g_item in enumerate(st.session_state.plano_operacional):
-                        if (g_item.get('DATA') == real_row.get('DATA') and 
-                            g_item.get('TURNO') == real_row.get('TURNO') and 
-                            g_item.get('Cód. Atividade') == real_row.get('Cód. Atividade') and
-                            g_item.get('Hora Inicial') == real_row.get('Hora Inicial') and
-                            g_item.get('Dados da Atividade') == real_row.get('Dados da Atividade')):
-                            ids_para_remover.append(g_i)
-                            break
-            
-            if ids_para_remover:
-                # Remove do fim para o início para não afetar os índices
-                for index_a_remover in sorted(ids_para_remover, reverse=True):
-                    st.session_state.plano_operacional.pop(index_a_remover)
-                salvar_plano_nuvem(st.session_state.plano_operacional)
-                st.success("Atividade excluída com sucesso!")
-                st.rerun()
+            if not edited_df.empty and len(edited_df) == len(df_turno_atual):
+                for idx, row in edited_df.iterrows():
+                    if row.get('Excluir', False):
+                        real_row = df_turno_atual.iloc[idx]
+                        for g_i, g_item in enumerate(st.session_state.plano_operacional):
+                            if (g_item.get('DATA') == real_row.get('DATA') and 
+                                g_item.get('TURNO') == real_row.get('TURNO') and 
+                                g_item.get('Cód. Atividade') == real_row.get('Cód. Atividade') and
+                                g_item.get('Hora Inicial') == real_row.get('Hora Inicial') and
+                                g_item.get('Dados da Atividade') == real_row.get('Dados da Atividade')):
+                                ids_para_remover.append(g_i)
+                                break
+                
+                if ids_para_remover:
+                    for index_a_remover in sorted(ids_para_remover, reverse=True):
+                        st.session_state.plano_operacional.pop(index_a_remover)
+                    salvar_plano_nuvem(st.session_state.plano_operacional)
+                    st.success("Atividade excluída com sucesso!")
+                    st.rerun()
         else:
             st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
