@@ -19,37 +19,33 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Capturar seleção atual da barra lateral para aplicar cor dinâmica nos selects
-# Como o formulário ainda não processou, pegamos o estado prévio ou valor padrão
-cor_selecionada_dinamica = "#FFD700" # Amarela por padrão
-
-# Estilização CSS avançada incluindo as grades corporativas e cores dinâmicas nos selects da barra lateral
-st.markdown(f"""
+# Estilização CSS avançada contendo todas as classes corporativas da grade e layout
+st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
-    [data-testid="stSidebar"] {{
+    [data-testid="stSidebar"] {
         min-width: 420px !important;
         max-width: 460px !important;
     }
-    [data-testid="stSidebar"] > div:first-child {{
+    [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
     }
     
     /* Remover espaçamento superior da página principal */
-    .block-container {{
+    .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
     }
     
-    div[data-testid="stButton"] button {{ font-weight: bold; }}
+    div[data-testid="stButton"] button { font-weight: bold; }
 
     /* Eliminar o espaçamento padrão entre as colunas do Streamlit para formar uma grade unificada */
-    [data-testid="stHorizontalBlock"] {{
+    [data-testid="stHorizontalBlock"] {
         gap: 0px !important;
     }
 
     /* Estilização corporativa com grades e bordas completas nas células */
-    .grid-header {{
+    .grid-header {
         background-color: #1a1c24;
         color: #fafafa;
         border-top: 1px solid #3a3a3a;
@@ -63,8 +59,8 @@ st.markdown(f"""
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }}
-    .grid-cell {{
+    }
+    .grid-cell {
         background-color: #0e1117;
         color: #fafafa;
         border-bottom: 1px solid #303030;
@@ -75,8 +71,8 @@ st.markdown(f"""
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }}
-    .grid-cell-center {{
+    }
+    .grid-cell-center {
         background-color: #0e1117;
         color: #a0a0a0;
         border-bottom: 1px solid #303030;
@@ -86,8 +82,8 @@ st.markdown(f"""
         font-weight: bold;
         padding: 8px 6px;
         text-align: center;
-    }}
-    .grid-header-center {{
+    }
+    .grid-header-center {
         background-color: #1a1c24;
         color: #fafafa;
         border-top: 1px solid #3a3a3a;
@@ -98,7 +94,7 @@ st.markdown(f"""
         font-size: 13px;
         padding: 8px 6px;
         text-align: center;
-    }}
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -246,11 +242,10 @@ try:
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
-        # Injetar cor dinâmica baseada na Turma selecionada
+        # Injetar cor dinâmica baseada na Turma selecionada de forma segura
         cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
-        st.sidebar.markdown(f"""
+        css_dinamico = f"""
         <style>
-            /* Altera dinamicamente a cor da fonte nos seletores de Turma e Turno na barra lateral */
             div[data-baseweb="select"] span[title="AMARELA"],
             div[data-baseweb="select"] span[title="BRANCA"],
             div[data-baseweb="select"] span[title="VERDE"],
@@ -262,7 +257,8 @@ try:
                 font-weight: bold !important;
             }}
         </style>
-        """, unsafe_allow_html=True)
+        """
+        st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
 
         st.markdown("---")
         
