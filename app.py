@@ -29,39 +29,6 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Estilização da tabela com bordas corporativas idênticas às originais */
-    .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-        font-size: 14px;
-        background-color: #0e1117;
-        color: #fafafa;
-    }
-    .custom-table th {
-        background-color: #1a1c24;
-        color: #fafafa;
-        border: 1px solid #303030;
-        padding: 8px 10px;
-        text-align: left;
-        font-weight: 600;
-    }
-    .custom-table td {
-        border: 1px solid #303030;
-        padding: 8px 10px;
-        vertical-align: middle;
-    }
-    .col-num {
-        width: 40px !important;
-        text-align: center !important;
-        font-weight: bold;
-        color: #a0a0a0;
-    }
-    .col-acao {
-        width: 60px !important;
-        text-align: center !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -328,43 +295,38 @@ try:
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
             
-            # Renderização corporativa da tabela estilizada com bordas corporativas
-            html_tabela = '<table class="custom-table">'
-            html_tabela += '<thead><tr>'
-            html_tabela += '<th class="col-num">Nº</th>'
-            html_tabela += '<th>Cód. Atividade</th>'
-            html_tabela += '<th>Hora Inicial</th>'
-            html_tabela += '<th>Hora Final</th>'
-            html_tabela += '<th>Ativo</th>'
-            html_tabela += '<th>Retirada NR12</th>'
-            html_tabela += '<th>Dados da Atividade</th>'
-            html_tabela += '<th>Status</th>'
-            html_tabela += '<th class="col-acao">Excluir</th>'
-            html_tabela += '</tr></thead><tbody>'
+            # Preparar dataframe para exibição integrada com seleção por clique em linha
+            df_exibicao = df_turno_atual.copy()
+            if 'UID' not in df_exibicao.columns:
+                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
+                
+            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
+            df_exibicao['Ação'] = '❌ Excluir'
             
-            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                html_tabela += '<tr>'
-                html_tabela += f'<td class="col-num">{sub_idx}</td>'
-                html_tabela += f'<td>{row.get("Cód. Atividade", "")}</td>'
-                html_tabela += f'<td>{row.get("Hora Inicial", "")}</td>'
-                html_tabela += f'<td>{row.get("Hora Final", "")}</td>'
-                html_tabela += f'<td>{row.get("Ativo", "")}</td>'
-                html_tabela += f'<td>{row.get("Retirada NR12", "")}</td>'
-                html_tabela += f'<td>{row.get("Dados da Atividade", "")}</td>'
-                html_tabela += f'<td>{row.get("Status", "")}</td>'
-                html_tabela += f'<td class="col-acao">❌</td>'
-                html_tabela += '</tr>'
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status', 'Ação']
+            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            html_tabela += '</tbody></table>'
-            st.markdown(html_tabela, unsafe_allow_html=True)
+            event = st.dataframe(
+                df_final_exibir,
+                use_container_width=True,
+                hide_index=True,
+                selection_mode="single-row",
+                on_select="rerun",
+                column_config={
+                    "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "UID": None,
+                    "Ação": st.column_config.TextColumn("Excluir", help="Clique na linha para excluir")
+                },
+                key=f"grid_{codigo_turno}_{data_selecionada_filtro}"
+            )
             
-            # Botões de exclusão individuais por linha com UID absoluto e seguro
-            for sub_idx, (_, row) in enumerate(df_turno_atual.iterrows(), 1):
-                uid_alvo = str(row.get('UID', ''))
-                _, col_btn = st.columns([22, 1])
-                with col_btn:
-                    if st.button("❌", key=f"btn_del_{codigo_turno}_{uid_alvo}_{sub_idx}", help=f"Excluir item {sub_idx}"):
-                        # Remove rigorosamente apenas o item que possui o UID exato correspondente
+            # Capturar seleção de linha para exclusão imediata e segura
+            selected_rows = event.selection.get("rows", []) if event and hasattr(event, "selection") else []
+            if selected_rows:
+                idx_selecionado = selected_rows[0]
+                if idx_selecionado < len(df_turno_atual):
+                    uid_alvo = str(df_turno_atual.iloc[idx_selecionado].get('UID', ''))
+                    if uid_alvo:
                         st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_alvo]
                         salvar_plano_nuvem(st.session_state.plano_operacional)
                         st.success("Atividade excluída com sucesso!")
