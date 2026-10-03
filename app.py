@@ -446,7 +446,6 @@ Atenciosamente,
         
         col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
         with col_titulo_bloco:
-            # Emojis 👥 e 👤 coloridos dinamicamente com a cor correspondente da Equipe/Turma
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
@@ -460,7 +459,7 @@ Atenciosamente,
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
         with col_botao_excluir:
-            if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+            if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                 estado_grid = st.session_state.get(selecao_key, {})
                 linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                 
