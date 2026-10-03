@@ -21,13 +21,19 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS geral para refinamento visual do painel e padronização de botões
+# ==========================================
+# OPÇÃO 1: FERROPORT INDUSTRIAL STANDARD (APLICADA ABAIXO)
+# (Para testar a Opção 2, altere #1c2541 para #1e1e1e e #3a86ff para #ff9f1c)
+# (Para testar a Opção 3, altere #1c2541 para #1e293b e #3a86ff para #06b6d4)
+# ==========================================
 st.markdown("""
 <style>
-    /* Remover espaçamento superior da barra lateral */
+    /* Estilização e compactação da barra lateral Ferroport */
     [data-testid="stSidebar"] {
-        min-width: 420px !important;
-        max-width: 460px !important;
+        min-width: 440px !important;
+        max-width: 480px !important;
+        background-color: #1c2541 !important;
+        border-right: 1px solid #48cae4;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
@@ -35,13 +41,26 @@ st.markdown("""
     
     /* Remover espaçamento superior da página principal */
     .block-container {
-        padding-top: 1.2rem !important;
+        padding-top: 1.0rem !important;
         padding-bottom: 2rem !important;
     }
     
-    /* Padronizar botões gerais */
+    /* Estilização de botões principais padrão Ferroport */
     div[data-testid="stButton"] button {
         font-weight: bold;
+        background-color: #3a86ff !important;
+        color: white !important;
+        border: 1px solid #48cae4 !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stButton"] button:hover {
+        background-color: #00b4d8 !important;
+        border-color: white !important;
+    }
+    
+    /* Reduzir margens verticais internas na barra lateral para subir os campos ao máximo */
+    [data-testid="stSidebar"] .element-container {
+        margin-bottom: -0.4rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -61,7 +80,6 @@ def carregar_e_processar_dados(caminho_arquivo):
         
     df.columns = df.columns.str.strip()
         
-    # Converter colunas de data candidatas a Data Final para datetime
     colunas_data_final = ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']
     for c_dt in colunas_data_final:
         if c_dt in df.columns:
@@ -207,31 +225,40 @@ try:
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO (SEM FORMULÁRIO BLOQUEANTE)
+    # BARRA LATERAL: MENU DE PLANEJAMENTO OTIMIZADO
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.4, 1.4])
+    # Campos Data, Hora Inicial e Hora Final na mesma linha superior
+    col_d, col_h1, col_h2 = st.sidebar.columns([1.5, 1.2, 1.2])
     with col_d:
-        data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
+        data_stamp = st.date_input("Data", value=datetime.now().date())
     with col_h1:
-        hora_ini_form = st.sidebar.selectbox("Hora Inicial", options=lista_horarios, index=7)
+        hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7)
     with col_h2:
-        hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8)
+        hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8)
         
     st.sidebar.markdown("---")
     
-    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3, 1, 1])
+    # "Turno" e "Turma/Equipe" um ao lado do outro nesta ordem exata
+    col_turno, col_turma = st.sidebar.columns([1.2, 1.2])
+    with col_turno:
+        turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
+    with col_turma:
+        turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
+
+    # Legenda "Chefe de Turno" com botões "+" e "-" compactos logo após
+    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([4.4, 0.8, 0.8])
     with col_lbl_chefe:
-        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
+        chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
     with col_btn_plus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➕"):
+        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➖"):
+        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -247,7 +274,7 @@ try:
                     st.session_state.lista_chefes.append(novo_chefe_str)
                     salvar_chefe_nuvem(novo_chefe_str)
                     st.session_state['mostrar_cadastro_chefe'] = False
-                    st.sidebar.success("Chefe registado e salvo com sucesso na nuvem!")
+                    st.sidebar.success("Chefe registado com sucesso!")
                     st.rerun()
                 else:
                     st.sidebar.warning("Este chefe já está registado.")
@@ -258,11 +285,11 @@ try:
     if st.session_state.get('mostrar_exclusao_chefe', False):
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc"):
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_3")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_3"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
-                st.sidebar.warning("Não é possível remover chefes importados da base de dados oficial do sistema.")
+                st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
             else:
                 if chefe_a_remover in st.session_state.lista_chefes:
                     st.session_state.lista_chefes.remove(chefe_a_remover)
@@ -271,12 +298,6 @@ try:
                     st.sidebar.success("Chefe removido com sucesso!")
                     st.rerun()
         st.sidebar.markdown("---")
-
-    col_t1, col_t2 = st.sidebar.columns(2)
-    with col_t1:
-        turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-    with col_t2:
-        turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
     cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
     css_dinamico = f"""
@@ -297,13 +318,12 @@ try:
 
     st.sidebar.markdown("---")
     
-    # Campo reativo com on_change para atualizar o aviso textual instantaneamente
+    # Campo reativo de atividade com atualização instantânea do aviso textual
     opcao_selecionada = st.sidebar.selectbox(
         "Selecione o COD. ATIVIDADE", 
         options=lista_opcoes_atividades,
         index=0,
-        placeholder="Digite para pesquisar...",
-        on_change=lambda: None
+        placeholder="Digite para pesquisar..."
     )
 
     if " - " in opcao_selecionada:
@@ -332,7 +352,7 @@ try:
         partes = cod_atividade_escolhido.split('.')
         ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
-    # Aviso textual atualizado instantaneamente ao alterar a atividade
+    # Aviso textual atualizado instantaneamente em tempo real
     st.sidebar.info(f"{descricao_atividade}")
 
     if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
@@ -510,7 +530,7 @@ try:
             st.markdown(
                 f"""
                 <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                    <button style="width: 100%; background-color: #3a86ff; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
                         🖨️ Imprimir
                     </button>
                 </a>
@@ -523,13 +543,12 @@ try:
     st.markdown("""
     <style>
         button[kind="primary"] {
-            background-color: #003366 !important;
-            border-color: #003366 !important;
+            background-color: #3a86ff !important;
+            border-color: #48cae4 !important;
             color: white !important;
         }
         button[kind="primary"]:hover {
-            background-color: #002244 !important;
-            border-color: #002244 !important;
+            background-color: #00b4d8 !important;
         }
     </style>
     """, unsafe_allow_html=True)
