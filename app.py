@@ -375,13 +375,19 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (BOTÃO ÚNICO DE AÇÃO)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK AUTOMÁTICA
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
         st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
-        lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br", label_visibility="collapsed")
+        lista_emails = st.text_input(
+            "Destinatários", 
+            value=st.session_state.get('emails_distribuicao', "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"), 
+            key="input_emails_state",
+            label_visibility="collapsed"
+        )
+        st.session_state.emails_distribuicao = lista_emails
     with col_btn_email:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
@@ -389,7 +395,7 @@ try:
         st.session_state.mostrar_painel_envio = True
 
     if st.session_state.get('mostrar_painel_envio', False):
-        col_msg_azul, col_btn_fechar = st.columns([9, 1])
+        col_vazio_painel, col_btn_fechar = st.columns([9, 1])
         with col_btn_fechar:
             if st.button("✖️ Fechar", use_container_width=True):
                 st.session_state.mostrar_painel_envio = False
@@ -411,7 +417,7 @@ Atenciosamente,"""
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        # Script único que executa o download automático na pasta Downloads E abre o Outlook simultaneamente num único clique
+        # Disparo simultâneo e automático do download e abertura do Outlook sem nenhum aviso textual poluindo a tela
         st.markdown(
             f"""
             <script>
@@ -423,14 +429,11 @@ Atenciosamente,"""
                 link.click();
                 document.body.removeChild(link);
 
-                // 2. Abertura do Outlook com o e-mail preenchido
+                // 2. Abertura automática do Outlook com os e-mails atualizados
                 setTimeout(function() {{
                     window.location.href = "{mailto_link}";
-                }}, 500);
+                }}, 400);
             </script>
-            <div style="background-color: #003366; padding: 12px; border-radius: 6px; text-align: center; color: white; font-weight: bold;">
-                📎 Plano baixado automaticamente na pasta Downloads e Outlook acionado!
-            </div>
             """,
             unsafe_allow_html=True
         )
