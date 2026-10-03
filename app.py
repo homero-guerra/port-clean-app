@@ -358,7 +358,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO DE CONSULTA E BOTÃO DE IMPRESSÃO
+    # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO PROPORCIONAL E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -367,17 +367,16 @@ try:
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
         )
 
-    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 2.5, 1.3, 1.0])
+    # Colunas ajustadas para que o campo do calendário fique perfeitamente proporcional
+    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
-        # Calendário interativo para escolher a data de consulta
         data_pesquisa_obj = st.date_input("🔍 Consultar Plano por Data", value=datetime.now().date(), label_visibility="collapsed")
         data_selecionada_filtro = data_pesquisa_obj.strftime('%d/%m/%Y')
 
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
 
-    # Verificar se a data pesquisada é o dia de hoje (para permitir edição/exclusão) ou data passada (Modo Leitura)
     data_hoje_str = datetime.now().strftime('%d/%m/%Y')
     modo_leitura = (data_selecionada_filtro != data_hoje_str)
 
@@ -611,7 +610,6 @@ Atenciosamente,"""
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
         with col_botao_excluir:
-            # Botão de exclusão desativado se estivermos no Modo Leitura
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
