@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para alinhamentos e estética corporativa
+# Estilização CSS avançada para controle de largura cirúrgica das colunas da tabela
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -39,6 +39,20 @@ st.markdown("""
     }
     
     div[data-testid="stButton"] button { font-weight: bold; }
+
+    /* Ajuste de largura fina para as colunas da grade do Streamlit */
+    /* Coluna Nº (reduzida) */
+    [data-testid="stDataFrame"] div[data-testid="stTable"] th:nth-child(2),
+    [data-testid="stDataFrame"] div[data-testid="stTable"] td:nth-child(2) {
+        width: 45px !important;
+        max-width: 45px !important;
+    }
+    
+    /* Coluna Dados da Atividade (aumentada em 30%) */
+    [data-testid="stDataFrame"] div[data-testid="stTable"] th:nth-child(8),
+    [data-testid="stDataFrame"] div[data-testid="stTable"] td:nth-child(8) {
+        min-width: 380px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -262,7 +276,7 @@ try:
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
-        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
+        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Date", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
     with col_down_grade:
         df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
         if not df_filtrado_data.empty:
@@ -289,7 +303,6 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        # Obter o nome do responsável ativo no painel (chefe de turno selecionado)
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
@@ -301,11 +314,8 @@ Atenciosamente,
 
 {responsavel_planejamento}"""
         
-        # Codificar assunto e corpo para URL (protocolo mailto)
         assunto_encoded = urllib.parse.quote(assunto)
         corpo_encoded = urllib.parse.quote(corpo)
-        
-        # Montar link mailto direcionando para o Outlook / Cliente de e-mail padrão
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
