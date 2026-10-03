@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS avançada para controle milimétrico das colunas no st.dataframe nativo
+# Estilização CSS avançada para fixar as dimensões exatas de cada coluna baseada no seu ajuste visual
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -38,21 +38,73 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
     
-    div[data-testid="stButton"] button { font-weight: bold; }
-
-    /* Ajuste cirúrgico de largura nas colunas da grade nativa */
-    /* Coluna Nº (reduzida em cerca de 50%) */
-    [data-testid="stDataFrame"] table tr th:nth-child(2),
-    [data-testid="stDataFrame"] table tr td:nth-child(2) {
-        width: 40px !important;
-        max-width: 40px !important;
-        min-width: 40px !important;
+    /* Padronizar todos os botões para ocuparem 100% da coluna */
+    div[data-testid="stButton"] button {
+        font-weight: bold;
+        width: 100% !important;
     }
 
-    /* Coluna Dados da Atividade (aumentada em 30%) */
+    /* Dimensões fixas unificadas para todas as tabelas (baseado no seu ajuste visual) */
+    /* Coluna 1: Checkbox */
+    [data-testid="stDataFrame"] table tr th:nth-child(1),
+    [data-testid="stDataFrame"] table tr td:nth-child(1) {
+        width: 50px !important;
+        max-width: 50px !important;
+        min-width: 50px !important;
+    }
+    /* Coluna 2: Nº */
+    [data-testid="stDataFrame"] table tr th:nth-child(2),
+    [data-testid="stDataFrame"] table tr td:nth-child(2) {
+        width: 60px !important;
+        max-width: 60px !important;
+        min-width: 60px !important;
+    }
+    /* Coluna 3: Cód. Atividade */
+    [data-testid="stDataFrame"] table tr th:nth-child(3),
+    [data-testid="stDataFrame"] table tr td:nth-child(3) {
+        width: 130px !important;
+        max-width: 130px !important;
+        min-width: 130px !important;
+    }
+    /* Coluna 4: Hora Inicial */
+    [data-testid="stDataFrame"] table tr th:nth-child(4),
+    [data-testid="stDataFrame"] table tr td:nth-child(4) {
+        width: 100px !important;
+        max-width: 100px !important;
+        min-width: 100px !important;
+    }
+    /* Coluna 5: Hora Final */
+    [data-testid="stDataFrame"] table tr th:nth-child(5),
+    [data-testid="stDataFrame"] table tr td:nth-child(5) {
+        width: 100px !important;
+        max-width: 100px !important;
+        min-width: 100px !important;
+    }
+    /* Coluna 6: Ativo */
+    [data-testid="stDataFrame"] table tr th:nth-child(6),
+    [data-testid="stDataFrame"] table tr td:nth-child(6) {
+        width: 110px !important;
+        max-width: 110px !important;
+        min-width: 110px !important;
+    }
+    /* Coluna 7: Retirada NR12 */
+    [data-testid="stDataFrame"] table tr th:nth-child(7),
+    [data-testid="stDataFrame"] table tr td:nth-child(7) {
+        width: 120px !important;
+        max-width: 120px !important;
+        min-width: 120px !important;
+    }
+    /* Coluna 8: Dados da Atividade (Ampla) */
     [data-testid="stDataFrame"] table tr th:nth-child(8),
     [data-testid="stDataFrame"] table tr td:nth-child(8) {
-        min-width: 420px !important;
+        min-width: 450px !important;
+    }
+    /* Coluna 9: Status */
+    [data-testid="stDataFrame"] table tr th:nth-child(9),
+    [data-testid="stDataFrame"] table tr td:nth-child(9) {
+        width: 130px !important;
+        max-width: 130px !important;
+        min-width: 130px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -346,7 +398,7 @@ Atenciosamente,
             
             selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
             
-            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([5, 1.0, 1.4])
+            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.0, 0.5, 1.5])
             with col_titulo_bloco:
                 html_cabecalho = f"""
                 <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -403,6 +455,7 @@ Atenciosamente,
                 on_select="rerun",
                 column_config={
                     "Nº": st.column_config.NumberColumn("Nº", width="small"),
+                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="large"),
                     "UID": None
                 },
                 key=selecao_key
