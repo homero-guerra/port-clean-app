@@ -61,8 +61,12 @@ def carregar_e_processar_dados(caminho_arquivo):
         
     df.columns = df.columns.str.strip()
         
-    if 'DATA_INICIO_DT' in df.columns:
-        df['DATA_INICIO_DT'] = pd.to_datetime(df['DATA_INICIO_DT'], errors='coerce')
+    # Converter colunas de data candidatas a Data Final para datetime
+    colunas_data_final = ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']
+    for c_dt in colunas_data_final:
+        if c_dt in df.columns:
+            df[c_dt] = pd.to_datetime(df[c_dt], errors='coerce')
+            
     return df
 
 try:
@@ -105,7 +109,7 @@ try:
             },
             {
                 "UID": "UID_2_002",
-                "TURMA": "AMARELA", 
+                "TURMA": "BRANCA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
                 "DATA": datetime.now().strftime('%d/%m/%Y'), 
@@ -209,7 +213,6 @@ try:
 
     with st.sidebar.form("form_inserir_atividade"):
         
-        # Tabulação na ordem exata solicitada (Data > Hora Inicial > Hora Final) com proporções ajustadas
         col_d, col_h1, col_h2 = st.columns([1.2, 1.4, 1.4])
         with col_d:
             data_stamp = st.date_input("Data", value=datetime.now().date())
@@ -367,7 +370,6 @@ try:
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
         )
 
-    # Colunas ajustadas para que o campo do calendário fique perfeitamente proporcional
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
@@ -382,6 +384,19 @@ try:
 
     if modo_leitura:
         st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registros de datas anteriores ficam em consulta protegida.")
+
+    # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
+    col_dt_final = None
+    for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
+        if c_cand in df_os.columns:
+            col_dt_final = c_cand
+            break
+
+    if col_dt_final:
+        df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
+        if not df_os_filtrado.empty:
+            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
+                st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
     # Extrair metadados unificados do Turno Diurno para replicar no ADM e Impressão
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
