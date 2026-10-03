@@ -270,7 +270,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (RETRATO)
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO DIRETO (RETRATO)
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -301,8 +301,6 @@ try:
                     color: #0f172a; 
                     margin: 0; 
                     padding: 10px; 
-                    transform: scale(0.9);
-                    transform-origin: top left;
                 }}
                 .header {{ border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 15px; }}
                 .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
@@ -337,9 +335,6 @@ try:
             <script>
                 window.onload = function() {
                     window.print();
-                    setTimeout(function() {
-                        window.parent.postMessage({type: 'close_print'}, '*');
-                    }, 500);
                 }
             </script>
         </body>
@@ -356,50 +351,25 @@ try:
         df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
         
         if not df_filtrado_data.empty:
-            if st.button("🖨️ Imprimir", use_container_width=True, type="primary"):
-                st.session_state['mostrar_impressao'] = True
-                
-                # Nome exato do ficheiro dinâmico: Plano_de_Limpeza_ddmmhhmm
-                timestamp_str = datetime.now().strftime("%d%m%H%M")
-                nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
-                
-                html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
-                b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
-                
-                st.markdown(
-                    f"""
-                    <script>
-                        var link = document.createElement('a');
-                        link.href = 'data:text/html;base64,{b64_down}';
-                        link.download = '{nome_arquivo_download}';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
+            timestamp_str = datetime.now().strftime("%d%m%H%M")
+            nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
+            
+            html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
+            b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
+            
+            # Botão de impressão nativo com link HTML direto (dispara download e abre a impressão instantaneamente)
+            st.markdown(
+                f"""
+                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
+                    <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                        🖨️ Imprimir
+                    </button>
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
         else:
             st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
-
-    # Estilização para o botão primário com padrão Ferroport (#003366)
-    st.markdown("""
-    <style>
-        button[kind="primary"] {
-            background-color: #003366 !important;
-            border-color: #003366 !important;
-            color: white !important;
-        }
-        button[kind="primary"]:hover {
-            background-color: #002244 !important;
-            border-color: #002244 !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    if st.session_state.get('mostrar_impressao', False) and not df_filtrado_data.empty:
-        html_impressao = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
-        components.html(html_impressao, height=1, scrolling=False)
 
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
