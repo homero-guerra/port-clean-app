@@ -21,15 +21,17 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para padronização visual com tons suaves e botões compactos na mesma linha
+# ==========================================
+# OPÇÃO 3: FERROPORT CLEAN TECH (MINIMALISTA EXECUTIVO & AÇO INOX)
+# ==========================================
 st.markdown("""
 <style>
-    /* Remover espaçamento superior da barra lateral */
+    /* Estilização da barra lateral com o tema Opção 3 */
     [data-testid="stSidebar"] {
         min-width: 440px !important;
         max-width: 480px !important;
-        background-color: #1e1e1e !important;
-        border-right: 1px solid #2ec4b6;
+        background-color: #1e293b !important;
+        border-right: 1px solid #64748b;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
@@ -41,26 +43,17 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
     
-    /* Suavizar tons dos botões normais */
+    /* Botões com tom limpo de ciano tecnológico / aço inox */
     div[data-testid="stButton"] button {
         font-weight: bold;
-        background-color: #c67d16 !important;
+        background-color: #0891b2 !important;
         color: white !important;
-        border: 1px solid #ff9f1c !important;
+        border: 1px solid #06b6d4 !important;
         border-radius: 6px !important;
     }
     div[data-testid="stButton"] button:hover {
-        background-color: #e08e1b !important;
+        background-color: #0e7490 !important;
         border-color: #ffffff !important;
-    }
-
-    /* Reduzir o tamanho específico dos botões de adicionar/remover chefe (+) e (-) */
-    button[key="b_plus_mini"], button[key="b_minus_mini"] {
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0px 4px !important;
-        font-size: 14px !important;
-        margin-top: 27px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -252,11 +245,11 @@ try:
     with col_lbl_chefe:
         chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
     with col_btn_plus:
-        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_mini"):
+        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_mini_v3"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
-        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_mini"):
+        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_mini_v3"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -283,8 +276,8 @@ try:
     if st.session_state.get('mostrar_exclusao_chefe', False):
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_mini")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_mini"):
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_v3")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_v3"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
                 st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
@@ -485,7 +478,7 @@ try:
                     else:
                         t_info = turma_comum
                         c_info = chefe_comum
-                        d_info = data_comum
+                        d_info = data_plano
 
                 if not df_t.empty:
                     html += f"""
@@ -528,7 +521,7 @@ try:
             st.markdown(
                 f"""
                 <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #c67d16; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                    <button style="width: 100%; background-color: #0891b2; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
                         🖨️ Imprimir
                     </button>
                 </a>
@@ -541,12 +534,12 @@ try:
     st.markdown("""
     <style>
         button[kind="primary"] {
-            background-color: #c67d16 !important;
-            border-color: #ff9f1c !important;
+            background-color: #0891b2 !important;
+            border-color: #06b6d4 !important;
             color: white !important;
         }
         button[kind="primary"]:hover {
-            background-color: #e08e1b !important;
+            background-color: #0e7490 !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -640,7 +633,7 @@ Atenciosamente,"""
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
-                if st.button("🗑️️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
