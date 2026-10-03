@@ -165,6 +165,18 @@ try:
         except:
             pass
 
+    def remover_chefe_nuvem(chefe_para_remover):
+        try:
+            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                    chefes_atuais = [line.strip() for line in f if line.strip()]
+                if chefe_para_remover in chefes_atuais:
+                    chefes_atuais.remove(chefe_para_remover)
+                    with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+                        f.write("\n".join(chefes_atuais))
+        except:
+            pass
+
     # ==========================================
     # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
@@ -208,15 +220,23 @@ try:
             
         st.markdown("---")
         
-        col_lbl_chefe, col_btn_plus = st.columns([4, 1])
+        col_lbl_chefe, col_btn_plus, col_btn_minus = st.columns([3, 1, 1])
         with col_lbl_chefe:
             chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
         with col_btn_plus:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
             abrir_cadastro = st.form_submit_button("➕")
+        with col_btn_minus:
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            abrir_exclusao = st.form_submit_button("➖")
 
         if abrir_cadastro:
-            st.session_state['mostrar_cadastro_chefe'] = not st.session_state.get('mostrar_cadastro_chefe', False)
+            st.session_state['mostrar_cadastro_chefe'] = True
+            st.session_state['mostrar_exclusao_chefe'] = False
+
+        if abrir_exclusao:
+            st.session_state['mostrar_exclusao_chefe'] = True
+            st.session_state['mostrar_cadastro_chefe'] = False
 
         if st.session_state.get('mostrar_cadastro_chefe', False):
             st.markdown("---")
@@ -236,6 +256,23 @@ try:
                         st.warning("Este chefe já está registado.")
                 else:
                     st.error("Preencha matrícula e nome.")
+            st.markdown("---")
+
+        if st.session_state.get('mostrar_exclusao_chefe', False):
+            st.markdown("---")
+            st.markdown("#### 🗑️ Remover Chefe Cadastrado")
+            chefe_a_remover = st.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes)
+            if st.form_submit_button("⚠️ Confirmar Exclusão"):
+                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
+                if chefe_a_remover in chefes_base_original:
+                    st.warning("Não é possível remover chefes importados da base de dados oficial do sistema.")
+                else:
+                    if chefe_a_remover in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.remove(chefe_a_remover)
+                        remover_chefe_nuvem(chefe_a_remover)
+                        st.session_state['mostrar_exclusao_chefe'] = False
+                        st.success("Chefe removido com sucesso!")
+                        st.rerun()
             st.markdown("---")
 
         col_t1, col_t2 = st.columns(2)
