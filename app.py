@@ -372,7 +372,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK COM PDF ANEXADO
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -384,6 +384,20 @@ try:
 
     if btn_enviar_outlook:
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
+        
+        # Gerar o PDF automático para download imediato e anexo
+        timestamp_str = datetime.now().strftime("%d%m%H%M")
+        nome_pdf_anexo = f"Plano_de_Limpeza_{timestamp_str}.html"
+        html_corpo_pdf = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
+        b64_pdf = base64.b64encode(html_corpo_pdf.encode('utf-8')).decode()
+        
+        st.markdown(
+            f'''<div style="background-color: #003366; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+                <span style="color: white; font-weight: bold; font-size: 14px;">📎 Plano pronto para anexo! </span>
+                <a href="data:text/html;base64,{b64_pdf}" download="{nome_pdf_anexo}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o PDF/Relatório e anexar ao Outlook</a>
+            </div>''',
+            unsafe_allow_html=True
+        )
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
         corpo = f"""Prezados(as),
@@ -399,7 +413,7 @@ Atenciosamente,
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook aberto para checagem final! Os destinatários e a mensagem foram preenchidos.")
+        st.success("Outlook acionado para revisão! Baixe o ficheiro no link azul acima, anexe-o ao e-mail e envie.")
 
     st.markdown("---")
 
