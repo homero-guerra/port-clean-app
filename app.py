@@ -172,14 +172,14 @@ try:
 
     with st.sidebar.form("form_inserir_atividade"):
         
-        # Tabulação configurada na ordem exata: Data > Hora Inicial > Hora Final
-        col_d, col_h1, col_h2 = st.columns([2, 1, 1])
+        # Tabulação na ordem exata solicitada (Data > Hora Inicial > Hora Final) com proporções ajustadas
+        col_d, col_h1, col_h2 = st.columns([1.2, 1.4, 1.4])
         with col_d:
             data_stamp = st.date_input("Data", value=datetime.now().date())
         with col_h1:
-            hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7) # Padrão 07:00
+            hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7)
         with col_h2:
-            hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8)   # Padrão 08:00
+            hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8)
             
         st.markdown("---")
         
@@ -498,7 +498,7 @@ Atenciosamente,"""
     cor_comum = mapa_cores.get(turma_comum, "#FFD700")
 
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
