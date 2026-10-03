@@ -391,7 +391,7 @@ try:
         chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
         data_comum = data_selecionada_filtro
 
-    # Função HTML de Impressão com os metadados inclusos nos títulos
+    # Função HTML de Impressão otimizada para acionar gravação PDF direta no nome desejado
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -476,7 +476,13 @@ try:
                     html += "</tbody></table></div>"
                     
         html += """
-            <script>window.onload = function() { window.print(); }</script>
+            <script>
+                window.onload = function() { 
+                    setTimeout(function() {
+                        window.print(); 
+                    }, 300);
+                }
+            </script>
         </body>
         </html>
         """
@@ -485,14 +491,32 @@ try:
     with col_down_grade:
         if not df_filtrado_data.empty:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
-            nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
+            nome_arquivo_pdf = f"Plano_de_Limpeza_{timestamp_str}.pdf"
             
             html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
             b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
             
+            # Botão Otimizado com suporte estrito de nome de ficheiro PDF com identificação dinâmica ddmmhhmm
             st.markdown(
                 f"""
-                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
+                <script>
+                    function dispararImpressaoPDF() {{
+                        var blob = new Blob([decodeURIComponent(escape(window.atob("{b64_down}")))], {{type: 'text/html'}});
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = "{nome_arquivo_pdf}";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        
+                        var win = window.open(url, '_blank');
+                        if(win) {{
+                            win.document.title = "{nome_arquivo_pdf}";
+                        }}
+                    }}
+                </script>
+                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_pdf}" target="_blank" style="text-decoration: none;">
                     <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
                         🖨️ Imprimir
                     </button>
