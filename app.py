@@ -72,6 +72,7 @@ try:
     # PERSISTÊNCIA EM NUVEM (FICHEIRO CSV COMPARTILHADO)
     # ==========================================
     ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
+    ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
 
     def carregar_plano_nuvem():
         if os.path.exists(ARQUIVO_BANCO_DADOS):
@@ -120,6 +121,24 @@ try:
         df_to_save = pd.DataFrame(lista_registros)
         df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding='utf-8')
 
+    def carregar_emails_nuvem():
+        if os.path.exists(ARQUIVO_CONFIG_EMAILS):
+            try:
+                with open(ARQUIVO_CONFIG_EMAILS, "r", encoding="utf-8") as f:
+                    conteudo = f.read().strip()
+                    if conteudo:
+                        return conteudo
+            except:
+                pass
+        return "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"
+
+    def salvar_emails_nuvem(emails_str):
+        try:
+            with open(ARQUIVO_CONFIG_EMAILS, "w", encoding="utf-8") as f:
+                f.write(emails_str)
+        except:
+            pass
+
     # ==========================================
     # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
@@ -129,6 +148,9 @@ try:
 
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = carregar_plano_nuvem()
+
+    if 'emails_distribuicao' not in st.session_state:
+        st.session_state.emails_distribuicao = carregar_emails_nuvem()
 
     col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
@@ -372,26 +394,33 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (MENSAGEM LIMPA)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
         st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
+        def atualizar_emails_callback():
+            novo_valor = st.session_state.input_emails_state
+            salvar_emails_nuvem(novo_valor)
+            st.session_state.emails_distribuicao = novo_valor
+
         lista_emails = st.text_input(
             "Destinatários", 
-            value=st.session_state.get('emails_distribuicao', "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"), 
+            value=st.session_state.emails_distribuicao, 
             key="input_emails_state",
+            on_change=atualizar_emails_callback,
             label_visibility="collapsed"
         )
-        st.session_state.emails_distribuicao = lista_emails
     with col_btn_email:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        # Assegurar gravação atualizada
+        salvar_emails_nuvem(lista_emails)
+        st.session_state.emails_distribuicao = lista_emails
         
-        # Mensagem limpa: o Outlook injetará a assinatura corporativa oficial automaticamente na parte inferior
+        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
         corpo = f"""Prezados(as),
 
 Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
