@@ -261,7 +261,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO REDUZIDO (PADRÃO FERROPORT)
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (METADE DA LARGURA)
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -321,7 +321,8 @@ try:
         html += "</body></html>"
         return html
 
-    col_tit_grade, col_filtro_grade, col_btn_espaco, col_down_grade = st.columns([3.5, 2.0, 0.5, 2.0])
+    # Colunas ajustadas para que o botão "Imprimir Plano" fique com 50% da largura anterior
+    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
@@ -330,17 +331,16 @@ try:
         df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
         
         if not df_filtrado_data.empty:
-            if st.button("🖨️ Imprimir Plano", use_container_width=True, type="primary"):
+            if st.button("🖨️ Imprimir", use_container_width=True, type="primary"):
                 st.session_state['mostrar_impressao'] = True
                 
-                # Gerar nome com data e hora (ddmmhhmm)
+                # Gerar nome com data e hora (ddmmhhmm) na pasta de downloads
                 timestamp_str = datetime.now().strftime("%d%m%H%M")
                 nome_arquivo_download = f"Plano de Limpeza Operacional_{timestamp_str}.html"
                 
                 html_para_download = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
                 b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
                 
-                # Script para disparar o download automático para a pasta de downloads do usuário
                 st.markdown(
                     f"""
                     <script>
@@ -355,7 +355,7 @@ try:
                     unsafe_allow_html=True
                 )
         else:
-            st.button("🖨️ Imprimir Plano", disabled=True, use_container_width=True)
+            st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
 
     # Estilização para o botão primário com padrão Ferroport (#003366)
     st.markdown("""
@@ -381,7 +381,7 @@ try:
                 st.session_state['mostrar_impressao'] = False
                 st.rerun()
         with col_info_imp:
-            st.info("Arquivo HTML descarregado na pasta de downloads! Utilize também o botão azul acima para imprimir ou guardar em PDF.")
+            st.info("Arquivo HTML descarregado na pasta de downloads! Utilize também o botão azul superior dentro do relatório para imprimir ou gravar em PDF.")
         
         html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
         components.html(html_impressao, height=600, scrolling=True)
@@ -441,7 +441,7 @@ Atenciosamente,
             
             selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
             
-            # Botão "Excluir Linha" com largura reduzida em 50%
+            # Botão "Excluir" com largura reduzida
             col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
             with col_titulo_bloco:
                 html_cabecalho = f"""
