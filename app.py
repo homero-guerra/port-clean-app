@@ -21,35 +21,16 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS geral para alargar a barra lateral, caixas de seleção, menus suspensos e texto completo
+# Estilização CSS padrão refinada
 st.markdown("""
 <style>
-    /* Alargar a largura total da barra lateral para dar espaço confortável */
+    /* Largura padrão limpa da barra lateral */
     [data-testid="stSidebar"] {
-        min-width: 520px !important;
-        max-width: 580px !important;
+        min-width: 420px !important;
+        max-width: 460px !important;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
-    }
-    
-    /* Alargar o menu suspenso (dropdown) e a caixa de seleção de atividades na barra lateral */
-    [data-testid="stSidebar"] div[data-baseweb="select"] {
-        width: 100% !important;
-    }
-    
-    /* Garantir largura estendida e legibilidade para o painel flutuante das opções do selectbox */
-    div[data-baseweb="popover"] {
-        width: 560px !important;
-        max-width: 90vw !important;
-    }
-    
-    /* Permitir que o texto das opções do menu suspenso quebre linha ou exiba inteiro sem cortes */
-    div[data-baseweb="popover"] div[role="option"] div {
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        font-size: 13px !important;
     }
     
     /* Remover espaçamento superior da página principal */
@@ -225,7 +206,7 @@ try:
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO (SEM FORMULÁRIO BLOQUEANTE)
+    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
@@ -241,15 +222,15 @@ try:
     
     col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3, 1, 1])
     with col_lbl_chefe:
-        chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="select_chefe_turno")
+        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="select_chefe_turno")
     with col_btn_plus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("➕", key="btn_abrir_cadastro"):
+        if st.sidebar.button("➕", key="btn_abrir_cadastro"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("➖", key="btn_abrir_exclusao"):
+        if st.sidebar.button("➖", key="btn_abrir_exclusao"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -277,10 +258,10 @@ try:
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
         chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="select_remover_chefe")
-        if st.sidebar.button("⚠️️ Confirmar Exclusão", key="btn_confirma_excluir_chefe"):
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_confirma_excluir_chefe"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
-                st.sidebar.warning("Não é possível remover chefes importados da base de dados oficial.")
+                st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
             else:
                 if chefe_a_remover in st.session_state.lista_chefes:
                     st.session_state.lista_chefes.remove(chefe_a_remover)
@@ -292,9 +273,9 @@ try:
 
     col_t1, col_t2 = st.sidebar.columns(2)
     with col_t1:
-        turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="select_turma_form")
+        turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="select_turma_form")
     with col_t2:
-        turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="select_turno_form")
+        turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="select_turno_form")
 
     cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
     css_dinamico = f"""
@@ -315,7 +296,7 @@ try:
 
     st.sidebar.markdown("---")
     
-    # Seletor reativo de atividade que atualiza o aviso textual instantaneamente
+    # Campo reativo que atualiza o aviso textual instantaneamente
     opcao_selecionada = st.sidebar.selectbox(
         "Selecione o COD. ATIVIDADE", 
         options=lista_opcoes_atividades,
@@ -350,7 +331,7 @@ try:
         partes = cod_atividade_escolhido.split('.')
         ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
-    # Aviso textual atualizado instantaneamente em tempo real
+    # Aviso textual atualizado instantaneamente ao mudar a atividade
     st.sidebar.info(f"{descricao_atividade}")
 
     if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
@@ -482,7 +463,7 @@ try:
                     else:
                         t_info = turma_comum
                         c_info = chefe_comum
-                        d_info = data_plano
+                        d_info = data_comum
 
                 if not df_t.empty:
                     html += f"""
