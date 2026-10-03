@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import os
 import urllib.parse
 import base64
@@ -358,7 +358,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E GESTÃO DE DATAS
+    # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO DE CONSULTA E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -366,19 +366,23 @@ try:
         df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
         )
-    
-    if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
-        datas_disponiveis = sorted(df_plano_atual['DATA'].dropna().unique().tolist())
-    else:
-        datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
+    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 2.5, 1.3, 1.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
-        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
-    
+        # Calendário interativo para escolher a data de consulta
+        data_pesquisa_obj = st.date_input("🔍 Consultar Plano por Data", value=datetime.now().date(), label_visibility="collapsed")
+        data_selecionada_filtro = data_pesquisa_obj.strftime('%d/%m/%Y')
+
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+
+    # Verificar se a data pesquisada é o dia de hoje (para permitir edição/exclusão) ou data passada (Modo Leitura)
+    data_hoje_str = datetime.now().strftime('%d/%m/%Y')
+    modo_leitura = (data_selecionada_filtro != data_hoje_str)
+
+    if modo_leitura:
+        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registros de datas anteriores ficam em consulta protegida.")
 
     # Extrair metadados unificados do Turno Diurno para replicar no ADM e Impressão
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
@@ -388,10 +392,10 @@ try:
         data_comum = str(df_diurno_ref.iloc[-1].get('DATA', data_selecionada_filtro))
     else:
         turma_comum = "AMARELA"
-        chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
+        chefe_comum = "20000000 - GERSON FUENTES"
         data_comum = data_selecionada_filtro
 
-    # Função HTML de Impressão com o nome dinâmico ddmmhhmm no formato .html perfeito
+    # Função HTML de Impressão com os metadados inclusos nos títulos
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -607,30 +611,34 @@ Atenciosamente,"""
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
         with col_botao_excluir:
-            if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                estado_grid = st.session_state.get(selecao_key, {})
-                linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                
-                if linhas_selecionadas:
-                    uids_a_remover = []
-                    for idx_sel in linhas_selecionadas:
-                        if idx_sel < len(df_turno_atual):
-                            uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                            if uid_item:
-                                uids_a_remover.append(uid_item)
+            # Botão de exclusão desativado se estivermos no Modo Leitura
+            if modo_leitura:
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
+            else:
+                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                    estado_grid = st.session_state.get(selecao_key, {})
+                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
-                    if uids_a_remover:
-                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                        salvar_plano_nuvem(st.session_state.plano_operacional)
+                    if linhas_selecionadas:
+                        uids_a_remover = []
+                        for idx_sel in linhas_selecionadas:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
                         
-                        if selecao_key in st.session_state:
-                            del st.session_state[selecao_key]
-                        st.session_state[selecao_key] = {"selection": {"rows": []}}
+                        if uids_a_remover:
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
                             
-                        st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                        st.rerun()
-                else:
-                    st.warning("Selecione pelo menos uma linha na tabela.")
+                            if selecao_key in st.session_state:
+                                del st.session_state[selecao_key]
+                            st.session_state[selecao_key] = {"selection": {"rows": []}}
+                                
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
+                    else:
+                        st.warning("Selecione pelo menos uma linha na tabela.")
 
         if not df_turno_atual.empty:
             df_exibicao = df_turno_atual.copy()
@@ -646,7 +654,7 @@ Atenciosamente,"""
                 df_final_exibir,
                 use_container_width=True,
                 hide_index=True,
-                selection_mode="multi-row",
+                selection_mode="disabled" if modo_leitura else "multi-row",
                 on_select="rerun",
                 column_config={
                     "Nº": st.column_config.NumberColumn("Nº", width="auto"),
