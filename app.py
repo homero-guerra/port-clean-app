@@ -372,13 +372,12 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK SIMPLES (MAILTO)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK COM ASSINATURA COMPLETA
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
         st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
-        # Mantém a lista atualizada em tempo real na sessão
         lista_emails = st.text_input(
             "Destinatários", 
             value=st.session_state.get('emails_distribuicao', "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"), 
@@ -387,21 +386,31 @@ try:
         )
         st.session_state.emails_distribuicao = lista_emails
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        
+        # Corpo da mensagem incluindo a saudação e a assinatura profissional completa
         corpo = f"""Prezados(as),
 
 Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
 
-Atenciosamente,"""
+Atenciosamente,
+
+Homero Guerra
+Operações
+(22) 99224-2077
+homero.guerra@ferroport.com.br
+Fazenda Saco Dantas, S/N – Terminal 1
+Porto do Açu, São João da Barra (RJ) – CEP: 28.200-000
+www.ferroport.com.br"""
         
         assunto_encoded = urllib.parse.quote(assunto)
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        # Abre o Outlook instantaneamente com a mensagem limpa e destinatários atualizados
+        # Abre o Outlook instantaneamente com a mensagem e a assinatura preenchidas
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
 
     st.markdown("---")
