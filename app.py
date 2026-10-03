@@ -21,16 +21,26 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS geral para refinamento visual do painel e padronização de botões
+# Estilização CSS geral para alargar caixas de seleção, menus suspensos e barra lateral
 st.markdown("""
 <style>
-    /* Remover espaçamento superior da barra lateral */
+    /* Alargar a largura total da barra lateral para dar mais espaço */
     [data-testid="stSidebar"] {
-        min-width: 420px !important;
-        max-width: 460px !important;
+        min-width: 480px !important;
+        max-width: 540px !important;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
+    }
+    
+    /* Alargar o menu suspenso (dropdown) e a caixa de seleção de atividades na barra lateral */
+    [data-testid="stSidebar"] div[data-baseweb="select"] {
+        width: 100% !important;
+    }
+    
+    /* Garantir largura estendida para o painel flutuante das opções do selectbox */
+    div[data-baseweb="popover"] {
+        width: 520px !important;
     }
     
     /* Remover espaçamento superior da página principal */
@@ -61,7 +71,6 @@ def carregar_e_processar_dados(caminho_arquivo):
         
     df.columns = df.columns.str.strip()
         
-    # Converter colunas de data candidatas a Data Final para datetime
     colunas_data_final = ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']
     for c_dt in colunas_data_final:
         if c_dt in df.columns:
