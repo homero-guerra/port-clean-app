@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import streamlit.components.v1 as components
 from datetime import datetime
 import os
 import urllib.parse
@@ -218,7 +219,7 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
-        # Extração segura do Ativo (evitando que o turno seja colocado no lugar do ativo)
+        # Extração segura do Ativo
         ativo_extraido = "GERAL"
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
@@ -261,7 +262,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO ROBUSTA
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -270,7 +271,7 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    # Função de geração do HTML de Impressão Paisagem Profissional
+    # Função geradora do HTML de Impressão Paisagem
     def gerar_html_impressao(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -289,9 +290,18 @@ try:
                 th {{ background-color: #1e293b; color: white; padding: 8px; text-align: left; }}
                 td {{ padding: 7px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
+                .print-btn {{
+                    background-color: #0284c7; color: white; border: none; padding: 10px 20px;
+                    font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 20px;
+                }}
+                .print-btn:hover {{ background-color: #0369a1; }}
+                @media print {{
+                    .print-btn {{ display: none; }}
+                }}
             </style>
         </head>
         <body>
+            <button class="print-btn" onclick="window.print()">🖨️ Clique aqui para Imprimir ou Salvar em PDF</button>
             <div class="header">
                 <h1>✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
                 <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
@@ -310,15 +320,7 @@ try:
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Status', '')}</td></tr>"
                     html += "</tbody></table>"
                     
-        html += """
-            <script>
-                window.onload = function() {
-                    window.print();
-                }
-            </script>
-        </body>
-        </html>
-        """
+        html += "</body></html>"
         return html
 
     col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
@@ -330,19 +332,25 @@ try:
         df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
         
         if not df_filtrado_data.empty:
-            html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
-            b64_print = base64.b64encode(html_impressao.encode('utf-8')).decode()
-            
-            st.markdown(
-                f'''<a href="data:text/html;base64,{b64_print}" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #ff4b4b; color: white; text-align: center; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 0px;">
-                        🖨️ Imprimir Plano
-                    </div>
-                </a>''',
-                unsafe_allow_html=True
-            )
+            if st.button("🖨️ Imprimir Plano", use_container_width=True, type="primary"):
+                st.session_state['mostrar_impressao'] = True
         else:
             st.button("🖨️ Imprimir Plano", disabled=True, use_container_width=True)
+
+    # Exibir a pré-visualização de impressão robusta integrada quando solicitado
+    if st.session_state.get('mostrar_impressao', False) and not df_filtrado_data.empty:
+        st.markdown("---")
+        col_voltar, col_info_imp = st.columns([2, 6])
+        with col_voltar:
+            if st.button("✖️ Fechar Pré-visualização"):
+                st.session_state['mostrar_impressao'] = False
+                st.rerun()
+        with col_info_imp:
+            st.info("Visualização pronta. Clique no botão azul superior dentro do relatório para imprimir ou gravar como PDF.")
+        
+        html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
+        components.html(html_impressao, height=600, scrolling=True)
+        st.markdown("---")
 
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
@@ -353,21 +361,9 @@ try:
     with col_input_email:
         lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br", label_visibility="collapsed")
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        html_conteudo_email = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
-        b64 = base64.b64encode(html_conteudo_email.encode('utf-8')).decode()
-        nome_html = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.html"
-        
-        st.markdown(
-            f'''<div style="background-color: #1e293b; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
-                <span style="color: white; font-weight: bold; font-size: 14px;">📥 Relatório pronto! </span>
-                <a href="data:text/html;base64,{b64}" download="{nome_html}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o Relatório (Anexe no Outlook)</a>
-            </div>''',
-            unsafe_allow_html=True
-        )
-        
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
@@ -384,7 +380,7 @@ Atenciosamente,
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook aberto para checagem final! Baixe o relatório no link azul acima, anexe-o no Outlook e clique em Enviar.")
+        st.success("Outlook aberto para checagem final! Os destinatários e a mensagem foram preenchidos.")
 
     st.markdown("---")
 
