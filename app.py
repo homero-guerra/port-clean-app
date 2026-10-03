@@ -103,7 +103,7 @@ try:
             },
             {
                 "UID": "UID_2_002",
-                "TURMA": "AMARELA", 
+                "TURMA": "BRANCA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
                 "DATA": datetime.now().strftime('%d/%m/%Y'), 
@@ -129,6 +129,9 @@ try:
 
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = carregar_plano_nuvem()
+
+    if 'mostrar_painel_envio' not in st.session_state:
+        st.session_state.mostrar_painel_envio = False
 
     col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
@@ -372,7 +375,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK COM PDF ANEXADO
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (COM BOTÃO DE FECHAR)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -383,16 +386,25 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
+        st.session_state.mostrar_painel_envio = True
+
+    # Exibir painel de envio apenas se st.session_state.mostrar_painel_envio for True
+    if st.session_state.get('mostrar_painel_envio', False):
+        col_msg_azul, col_btn_fechar = st.columns([9, 1])
+        with col_btn_fechar:
+            if st.button("✖️ Fechar", use_container_width=True):
+                st.session_state.mostrar_painel_envio = False
+                st.rerun()
+
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
-        # Gerar o PDF automático para download imediato e anexo
         timestamp_str = datetime.now().strftime("%d%m%H%M")
         nome_pdf_anexo = f"Plano_de_Limpeza_{timestamp_str}.html"
         html_corpo_pdf = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
         b64_pdf = base64.b64encode(html_corpo_pdf.encode('utf-8')).decode()
         
         st.markdown(
-            f'''<div style="background-color: #003366; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+            f'''<div style="background-color: #003366; padding: 12px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
                 <span style="color: white; font-weight: bold; font-size: 14px;">📎 Plano pronto para anexo! </span>
                 <a href="data:text/html;base64,{b64_pdf}" download="{nome_pdf_anexo}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o PDF/Relatório e anexar ao Outlook</a>
             </div>''',
