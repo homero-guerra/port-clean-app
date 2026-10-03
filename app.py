@@ -22,18 +22,16 @@ mapa_cores = {
 }
 
 # ==========================================
-# OPÇÃO 1: FERROPORT INDUSTRIAL STANDARD (APLICADA ABAIXO)
-# (Para testar a Opção 2, altere #1c2541 para #1e1e1e e #3a86ff para #ff9f1c)
-# (Para testar a Opção 3, altere #1c2541 para #1e293b e #3a86ff para #06b6d4)
+# OPÇÃO 2: FERROPORT OPERAÇÕES PESADAS (ÂMBAR / GRAFITE)
 # ==========================================
 st.markdown("""
 <style>
-    /* Estilização e compactação da barra lateral Ferroport */
+    /* Estilização da barra lateral com o tema Opção 2 */
     [data-testid="stSidebar"] {
         min-width: 440px !important;
         max-width: 480px !important;
-        background-color: #1c2541 !important;
-        border-right: 1px solid #48cae4;
+        background-color: #1e1e1e !important;
+        border-right: 1px solid #2ec4b6;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
@@ -41,26 +39,21 @@ st.markdown("""
     
     /* Remover espaçamento superior da página principal */
     .block-container {
-        padding-top: 1.0rem !important;
+        padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
     }
     
-    /* Estilização de botões principais padrão Ferroport */
+    /* Botões com tom suave de âmbar/laranja industrial */
     div[data-testid="stButton"] button {
         font-weight: bold;
-        background-color: #3a86ff !important;
+        background-color: #c67d16 !important;
         color: white !important;
-        border: 1px solid #48cae4 !important;
+        border: 1px solid #ff9f1c !important;
         border-radius: 6px !important;
     }
     div[data-testid="stButton"] button:hover {
-        background-color: #00b4d8 !important;
-        border-color: white !important;
-    }
-    
-    /* Reduzir margens verticais internas na barra lateral para subir os campos ao máximo */
-    [data-testid="stSidebar"] .element-container {
-        margin-bottom: -0.4rem !important;
+        background-color: #e08e1b !important;
+        border-color: #ffffff !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -225,7 +218,7 @@ try:
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO OTIMIZADO
+    # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
@@ -247,18 +240,18 @@ try:
     with col_turma:
         turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
 
-    # Legenda "Chefe de Turno" com botões "+" e "-" compactos logo após
-    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([4.4, 0.8, 0.8])
+    # Chefe de Turno com botões "+" e "-" compactos lado a lado logo após
+    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3.6, 0.6, 0.6])
     with col_lbl_chefe:
         chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
     with col_btn_plus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus"):
+        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_v2"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus"):
+        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_v2"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -285,8 +278,8 @@ try:
     if st.session_state.get('mostrar_exclusao_chefe', False):
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_3")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_3"):
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_v2")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_v2"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
                 st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
@@ -530,7 +523,7 @@ try:
             st.markdown(
                 f"""
                 <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #3a86ff; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                    <button style="width: 100%; background-color: #c67d16; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
                         🖨️ Imprimir
                     </button>
                 </a>
@@ -543,12 +536,12 @@ try:
     st.markdown("""
     <style>
         button[kind="primary"] {
-            background-color: #3a86ff !important;
-            border-color: #48cae4 !important;
+            background-color: #c67d16 !important;
+            border-color: #ff9f1c !important;
             color: white !important;
         }
         button[kind="primary"]:hover {
-            background-color: #00b4d8 !important;
+            background-color: #e08e1b !important;
         }
     </style>
     """, unsafe_allow_html=True)
