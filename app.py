@@ -302,63 +302,66 @@ try:
         st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
 
         st.markdown("---")
-        
-        opcao_selecionada = st.selectbox(
-            "Selecione o COD. ATIVIDADE", 
-            options=lista_opcoes_atividades,
-            index=0,
-            placeholder="Digite para pesquisar..."
-        )
 
-        if " - " in opcao_selecionada:
-            cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
-        else:
-            cod_atividade_escolhido = opcao_selecionada
-            descricao_atividade = "Atividade Operacional Registrada"
+    # ==========================================
+    # SELETOR DE ATIVIDADE FORA DO FORMULÁRIO (ATUALIZAÇÃO INSTANTÂNEA)
+    # ==========================================
+    opcao_selecionada = st.sidebar.selectbox(
+        "Selecione o COD. ATIVIDADE", 
+        options=lista_opcoes_atividades,
+        index=0,
+        placeholder="Digite para pesquisar..."
+    )
 
-        ativo_extraido = "GERAL"
-        if col_cod in df_os.columns and col_ativo in df_os.columns:
-            resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
-            if not resultado_sql.empty:
-                val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
-                if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
-                    ativo_extraido = val_ativo
-                else:
-                    partes = cod_atividade_escolhido.split('.')
-                    if len(partes) > 0 and len(partes[0]) >= 4:
-                        ativo_extraido = partes[0][:8]
-        else:
-            partes = cod_atividade_escolhido.split('.')
-            if len(partes) > 0:
-                ativo_extraido = partes[0][:8]
+    if " - " in opcao_selecionada:
+        cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
+    else:
+        cod_atividade_escolhido = opcao_selecionada
+        descricao_atividade = "Atividade Operacional Registrada"
 
-        if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
-            partes = cod_atividade_escolhido.split('.')
-            ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
+    ativo_extraido = "GERAL"
+    if col_cod in df_os.columns and col_ativo in df_os.columns:
+        resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
+        if not resultado_sql.empty:
+            val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
+            if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
+                ativo_extraido = val_ativo
+            else:
+                partes = cod_atividade_escolhido.split('.')
+                if len(partes) > 0 and len(partes[0]) >= 4:
+                    ativo_extraido = partes[0][:8]
+    else:
+        partes = cod_atividade_escolhido.split('.')
+        if len(partes) > 0:
+            ativo_extraido = partes[0][:8]
 
-        st.info(f"{descricao_atividade}")
+    if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
+        partes = cod_atividade_escolhido.split('.')
+        ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
-        botao_inserir_form = st.form_submit_button("💾 Incluir na Grade", use_container_width=True)
+    # Aviso textual atualizado instantaneamente ao alterar a atividade
+    st.sidebar.info(f"{descricao_atividade}")
 
-        if botao_inserir_form:
-            novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
-            novo_registro = {
-                "UID": novo_uid,
-                "TURMA": turma_form,
-                "CHEFE DE TURNO": chefe_form,
-                "TURNO": turno_form,
-                "DATA": data_stamp.strftime('%d/%m/%Y'),
-                "Cód. Atividade": cod_atividade_escolhido,
-                "Hora Inicial": hora_ini_form,
-                "Hora Final": hora_fim_form,
-                "Ativo": ativo_extraido,
-                "Retirada NR12": "NÃO",
-                "Dados da Atividade": descricao_atividade
-            }
-            st.session_state.plano_operacional.append(novo_registro)
-            salvar_plano_nuvem(st.session_state.plano_operacional)
-            st.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
-            st.rerun()
+    # Botão de inclusão interativo fora do formulário para salvar com os dados reativos
+    if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
+        novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
+        novo_registro = {
+            "UID": novo_uid,
+            "TURMA": turma_form,
+            "CHEFE DE TURNO": chefe_form,
+            "TURNO": turno_form,
+            "DATA": data_stamp.strftime('%d/%m/%Y'),
+            "Cód. Atividade": cod_atividade_escolhido,
+            "Hora Inicial": hora_ini_form,
+            "Hora Final": hora_fim_form,
+            "Ativo": ativo_extraido,
+            "Retirada NR12": "NÃO",
+            "Dados da Atividade": descricao_atividade
+        }
+        st.session_state.plano_operacional.append(novo_registro)
+        salvar_plano_nuvem(st.session_state.plano_operacional)
+        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
+        st.rerun()
 
     # ==========================================
     # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO PROPORCIONAL E BOTÃO DE IMPRESSÃO
@@ -472,7 +475,7 @@ try:
                     else:
                         t_info = turma_comum
                         c_info = chefe_comum
-                        d_info = data_plano
+                        d_info = data_comum
 
                 if not df_t.empty:
                     html += f"""
