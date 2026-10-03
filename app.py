@@ -417,7 +417,7 @@ Atenciosamente,
     cor_comum = mapa_cores.get(turma_comum, "#FFD700")
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
@@ -425,7 +425,6 @@ Atenciosamente,
     for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
-        # Sincronizar metadados do Turno ADM com o Diurno
         if codigo_turno == "ADM":
             turma_info = turma_comum
             chefe_info = chefe_comum
@@ -447,12 +446,13 @@ Atenciosamente,
         
         col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
         with col_titulo_bloco:
+            # Emojis 👥 e 👤 coloridos dinamicamente com a cor correspondente da Equipe/Turma
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
                 <span style="color: #d0d0d0; font-size: 14px;">
-                    👥 <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
                     &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
                 </span>
             </div>
@@ -492,7 +492,6 @@ Atenciosamente,
                 
             df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            # Coluna 'Status' removida da exibição
             colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
