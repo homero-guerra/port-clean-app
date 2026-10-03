@@ -3,10 +3,6 @@ import pandas as pd
 from datetime import datetime
 import os
 import urllib.parse
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -286,73 +282,7 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # FUNÇÃO DE GERAÇÃO DO RELATÓRIO EM PDF (PAISAGEM)
-    # ==========================================
-    def gerar_pdf_paisagem(df_dados, data_plano, caminho_saida):
-        doc = SimpleDocTemplate(
-            caminho_saida,
-            pagesize=landscape(letter),
-            rightMargin=30, leftMargin=30,
-            topMargin=30, bottomMargin=30
-        )
-        elements = []
-        styles = getSampleStyleSheet()
-        
-        # Título do Relatório
-        estilo_titulo = ParagraphStyle(
-            'TituloRelatorio',
-            parent=styles['Heading1'],
-            fontSize=18,
-            textColor=colors.HexColor("#1e293b"),
-            spaceAfter=15,
-            alignment=0
-        )
-        elements.append(Paragraph(f"✨ Plano de Limpeza Operacional - Data: {data_plano}", estilo_titulo))
-        elements.append(Spacer(1, 10))
-        
-        if df_dados.empty:
-            elements.append(Paragraph("Nenhuma atividade registada para esta data.", styles['Normal']))
-        else:
-            for turno_nome in ["DIURNO", "ADM", "NOTURNO"]:
-                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == turno_nome]
-                if not df_t.empty:
-                    elements.append(Paragraph(f"<b>Turno: {turno_nome}</b>", styles['Heading2']))
-                    elements.append(Spacer(1, 5))
-                    
-                    tabela_dados = [["Nº", "Cód. Atividade", "Hora Ini.", "Hora Fim.", "Ativo", "NR12", "Dados da Atividade", "Status"]]
-                    for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        tabela_dados.append([
-                            str(idx),
-                            str(row.get('Cód. Atividade', '')),
-                            str(row.get('Hora Inicial', '')),
-                            str(row.get('Hora Final', '')),
-                            str(row.get('Ativo', '')),
-                            str(row.get('Retirada NR12', '')),
-                            str(row.get('Dados da Atividade', '')),
-                            str(row.get('Status', ''))
-                        ])
-                    
-                    t = Table(tabela_dados, colWidths=[35, 100, 60, 60, 80, 70, 270, 80])
-                    t.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1e293b")),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 9),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f8fafc")),
-                        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-                        ('FONTSIZE', (0, 1), (-1, -1), 8),
-                        ('TOPPADDING', (0, 1), (-1, -1), 5),
-                        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
-                    ]))
-                    elements.append(t)
-                    elements.append(Spacer(1, 15))
-                    
-        doc.build(elements)
-
-    # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (COM PDF ANEXADO)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -363,10 +293,6 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        # Gerar o PDF paisagem temporário para envio
-        nome_arquivo_pdf = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.pdf"
-        gerar_pdf_paisagem(df_filtrado_data, data_selecionada_filtro, nome_arquivo_pdf)
-        
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
@@ -383,7 +309,7 @@ Atenciosamente,
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success(f"PDF gerado com sucesso ('{nome_arquivo_pdf}')! Outlook acionado para envio.")
+        st.success("Outlook acionado! A mensagem foi aberta com os destinatários e a assinatura preenchidos para revisão.")
 
     st.markdown("---")
 
