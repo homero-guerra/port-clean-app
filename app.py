@@ -162,6 +162,9 @@ try:
     else:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
+    # Lista de horários de 1 em 1 hora
+    lista_horarios = [f"{h:02d}:00" for h in range(24)]
+
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
@@ -169,13 +172,14 @@ try:
 
     with st.sidebar.form("form_inserir_atividade"):
         
+        # Tabulação configurada na ordem exata: Data > Hora Inicial > Hora Final
         col_d, col_h1, col_h2 = st.columns([2, 1, 1])
         with col_d:
             data_stamp = st.date_input("Data", value=datetime.now().date())
         with col_h1:
-            hora_ini_form = st.text_input("Hora Inicial", value="07:00")
+            hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7) # Padrão 07:00
         with col_h2:
-            hora_fim_form = st.text_input("Hora Final", value="08:00")
+            hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8)   # Padrão 08:00
             
         st.markdown("---")
         
@@ -291,7 +295,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E GESTÃO DE DATAS ANTES DE QUALQUER USO
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E GESTÃO DE DATAS
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
