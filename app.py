@@ -62,11 +62,13 @@ st.markdown("""
         border-color: #2a9d8f !important;
     }
 
-    /* Ajuste milimétrico para os botões compactos (+) e (-) ficarem alinhados ao lado do selectbox */
-    div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
-        height: 38px !important;
+    /* Estilização milimétrica para os botões compactos (+) e (-) na mesma linha do Chefe */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(3) button {
         margin-top: 28px !important;
-        padding: 0px 4px !important;
+        height: 38px !important;
+        padding: 0px 2px !important;
+        font-size: 13px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -253,16 +255,16 @@ try:
     with col_turma:
         turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
 
-    # Chefe de Turno com botões "+" e "-" alinhados diretamente ao lado do campo na mesma linha
-    col_chefe_sel, col_p, col_m = st.sidebar.columns([3.2, 0.4, 0.4])
+    # Chefe de Turno com botões "+" e "-" lado a lado rigorosamente na mesma linha
+    col_chefe_sel, col_p, col_m = st.sidebar.columns([3.4, 0.45, 0.45])
     with col_chefe_sel:
         chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
     with col_p:
-        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_inline"):
+        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_strict"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_m:
-        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_inline"):
+        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_strict"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -289,8 +291,8 @@ try:
     if st.session_state.get('mostrar_exclusao_chefe', False):
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_inline")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_inline"):
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_strict")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_strict"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
                 st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
@@ -491,7 +493,7 @@ try:
                     else:
                         t_info = turma_comum
                         c_info = chefe_comum
-                        d_info = data_comum
+                        d_info = data_plano
 
                 if not df_t.empty:
                     html += f"""
@@ -577,7 +579,7 @@ try:
             label_visibility="collapsed"
         )
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
         salvar_emails_nuvem(lista_emails)
