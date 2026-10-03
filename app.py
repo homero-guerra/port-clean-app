@@ -282,7 +282,7 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (COM ORIENTAÇÃO CLARA)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -308,8 +308,19 @@ Atenciosamente,
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
+        # Gerar também o CSV consolidado do dia para download imediato para facilitar o anexo
+        if not df_filtrado_data.empty:
+            csv_bytes = df_filtrado_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📎 Clique aqui para descarregar o Relatório do Dia e anexar ao Outlook",
+                data=csv_bytes,
+                file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
+                mime="text/csv",
+                type="primary"
+            )
+        
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook acionado! A mensagem foi aberta com os destinatários e a assinatura preenchidos para revisão.")
+        st.success("Outlook acionado! A mensagem foi aberta com os destinatários preenchidos. Basta anexar o relatório descarregado acima e clicar em Enviar.")
 
     st.markdown("---")
 
