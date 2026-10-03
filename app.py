@@ -104,7 +104,7 @@ try:
             },
             {
                 "UID": "UID_2_002",
-                "TURMA": "BRANCA", 
+                "TURMA": "AMARELA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
                 "DATA": datetime.now().strftime('%d/%m/%Y'), 
@@ -305,6 +305,19 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
+    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+
+    # Extrair metadados unificados do Turno Diurno para replicar no ADM
+    df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
+    if not df_diurno_ref.empty:
+        turma_comum = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
+        chefe_comum = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
+        data_comum = str(df_diurno_ref.iloc[-1].get('DATA', data_selecionada_filtro))
+    else:
+        turma_comum = "AMARELA"
+        chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
+        data_comum = data_selecionada_filtro
+
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -315,13 +328,24 @@ try:
             <style>
                 @page {{ size: portrait; margin: 8mm; }}
                 body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }}
-                .header {{ border-bottom: 2px solid #003366; padding-bottom: 8mm; margin-bottom: 15px; }}
+                .header {{ border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }}
                 .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
                 .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
-                h2 {{ color: #003366; background-color: #f1f5f9; padding: 6px 10px; margin-top: 15px; font-size: 12px; border-left: 4px solid #003366; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9px; page-break-inside: avoid; }}
-                th {{ background-color: #003366; color: white; padding: 6px; text-align: left; }}
-                td {{ padding: 5px; border: 1px solid #cbd5e1; }}
+                .bloco-container {{ margin-top: 15px; page-break-inside: avoid; }}
+                .bloco-titulo {{ 
+                    background-color: #f1f5f9; 
+                    padding: 6px 10px; 
+                    font-size: 12px; 
+                    font-weight: bold; 
+                    color: #003366; 
+                    border-left: 4px solid #003366; 
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }}
+                th {{ background-color: #003366; color: white; padding: 5px; text-align: left; }}
+                td {{ padding: 4px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
             </style>
         </head>
@@ -335,14 +359,47 @@ try:
         if df_dados.empty:
             html += "<p>Nenhuma atividade registada para esta data.</p>"
         else:
-            for turno_nome in ["DIURNO", "ADM", "NOTURNO"]:
-                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == turno_nome]
+            turnos_html = [
+                ("DIURNO", "Turno Diurno"),
+                ("ADM", "Turno ADM"),
+                ("NOTURNO", "Turno Noturno")
+            ]
+            for codigo_turno, titulo_turno in turnos_html:
+                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
+                
+                if codigo_turno == "ADM":
+                    t_info = turma_comum
+                    c_info = chefe_comum
+                    d_info = data_comum
+                else:
+                    if not df_t.empty:
+                        ultima_linha = df_t.iloc[-1]
+                        t_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
+                        c_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
+                        d_info = str(ultima_linha.get('DATA', data_plano))
+                    else:
+                        t_info = turma_comum
+                        c_info = chefe_comum
+                        d_info = data_plano
+
                 if not df_t.empty:
-                    html += f"<h2>TURNO: {turno_nome}</h2>"
-                    html += "<table><thead><tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr></thead><tbody>"
+                    html += f"""
+                    <div class="bloco-container">
+                        <div class="bloco-titulo">
+                            <span>{titulo_turno}</span>
+                            <span style="font-size: 10px; font-weight: normal; color: #334155;">
+                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
+                            </span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
+                            </thead>
+                            <tbody>
+                    """
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
-                    html += "</tbody></table>"
+                    html += "</tbody></table></div>"
                     
         html += """
             <script>window.onload = function() { window.print(); }</script>
@@ -357,8 +414,6 @@ try:
     with col_filtro_grade:
         data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
     with col_down_grade:
-        df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
-        
         if not df_filtrado_data.empty:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
             nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
@@ -416,7 +471,6 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        # Assegurar gravação atualizada
         salvar_emails_nuvem(lista_emails)
         st.session_state.emails_distribuicao = lista_emails
         
@@ -434,17 +488,6 @@ Atenciosamente,"""
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
 
     st.markdown("---")
-
-    # Extrair metadados unificados baseados no Turno Diurno para replicar no ADM
-    df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_diurno_ref.empty:
-        turma_comum = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_comum = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-        data_comum = str(df_diurno_ref.iloc[-1].get('DATA', data_selecionada_filtro))
-    else:
-        turma_comum = "AMARELA"
-        chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
-        data_comum = data_selecionada_filtro
 
     cor_comum = mapa_cores.get(turma_comum, "#FFD700")
 
