@@ -3,10 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import urllib.parse
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+import base64
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -145,7 +142,7 @@ try:
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
-    st.sidebar.markdown("### 🎛️️ MENU DE PLANEJAMENTO")
+    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
     with st.sidebar.form("form_inserir_atividade"):
         
@@ -286,84 +283,51 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # FUNÇÃO DE GERAÇÃO DO RELATÓRIO PROFISSIONAL EM PDF (PAISAGEM)
+    # FUNÇÃO DE GERAÇÃO DE RELATÓRIO HTML PROFISSIONAL (IMPRESSÃO PDF PAISAGEM)
     # ==========================================
-    def criar_pdf_paisagem(df_dados, data_plano, caminho_pdf):
-        doc = SimpleDocTemplate(
-            caminho_pdf,
-            pagesize=landscape(letter),
-            rightMargin=30, leftMargin=30,
-            topMargin=30, bottomMargin=30
-        )
-        story = []
-        styles = getSampleStyleSheet()
-        
-        # Estilos personalizados profissionais
-        estilo_titulo = ParagraphStyle(
-            'TituloEmpresa',
-            parent=styles['Heading1'],
-            fontSize=16,
-            textColor=colors.HexColor("#0f172a"),
-            spaceAfter=4,
-            fontName='Helvetica-Bold'
-        )
-        estilo_sub = ParagraphStyle(
-            'SubTituloEmpresa',
-            parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor("#64748b"),
-            spaceAfter=15,
-            fontName='Helvetica'
-        )
-        
-        story.append(Paragraph("✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL", estilo_titulo))
-        story.append(Paragraph(f"Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data:</b> {data_plano}", estilo_sub))
+    def gerar_html_paisagem(df_dados, data_plano):
+        html = f"""
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Plano de Limpeza Ferroport - {data_plano}</title>
+            <style>
+                @page {{ size: landscape; margin: 15mm; }}
+                body {{ font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }}
+                h2 {{ color: #0f172a; border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin-top: 25px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }}
+                th {{ background-color: #1e293b; color: white; padding: 8px; text-align: left; }}
+                td {{ padding: 7px; border: 1px solid #cbd5e1; }}
+                tr:nth-child(even) {{ background-color: #f8fafc; }}
+                .header {{ margin-bottom: 20px; }}
+                .header h1 {{ margin: 0; font-size: 20px; color: #0f172a; }}
+                .header p {{ margin: 5px 0 0 0; color: #64748b; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
+                <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data:</b> {data_plano}</p>
+            </div>
+        """
         
         if df_dados.empty:
-            story.append(Paragraph("Nenhuma atividade registada para esta data.", styles['Normal']))
+            html += "<p>Nenhuma atividade registada para esta data.</p>"
         else:
             for turno_nome in ["DIURNO", "ADM", "NOTURNO"]:
                 df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == turno_nome]
                 if not df_t.empty:
-                    story.append(Paragraph(f"<b>TURNO: {turno_nome}</b>", styles['Heading2']))
-                    story.append(Spacer(1, 4))
-                    
-                    tabela_dados = [["Nº", "Cód. Atividade", "Hora Ini.", "Hora Fim.", "Ativo", "NR12", "Dados da Atividade", "Status"]]
+                    html += f"<h2>TURNO: {turno_nome}</h2>"
+                    html += "<table><thead><tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th><th>Status</th></tr></thead><tbody>"
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        tabela_dados.append([
-                            str(idx),
-                            str(row.get('Cód. Atividade', '')),
-                            str(row.get('Hora Inicial', '')),
-                            str(row.get('Hora Final', '')),
-                            str(row.get('Ativo', '')),
-                            str(row.get('Retirada NR12', '')),
-                            str(row.get('Dados da Atividade', '')),
-                            str(row.get('Status', ''))
-                        ])
+                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Status', '')}</td></tr>"
+                    html += "</tbody></table>"
                     
-                    # Larguras ajustadas para preencher perfeitamente a página em paisagem (730 pts úteis)
-                    t = Table(tabela_dados, colWidths=[30, 95, 60, 60, 85, 75, 255, 70])
-                    t.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1e293b")),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 9),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                        ('TOPPADDING', (0, 0), (-1, 0), 6),
-                        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f8fafc")),
-                        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-                        ('FONTSIZE', (0, 1), (-1, -1), 8),
-                        ('TOPPADDING', (0, 1), (-1, -1), 5),
-                        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
-                    ]))
-                    story.append(t)
-                    story.append(Spacer(1, 12))
-                    
-        doc.build(story)
+        html += "</body></html>"
+        return html
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK COM PDF
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -374,20 +338,19 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        # 1. Gerar arquivo PDF profissional em paisagem
-        nome_pdf = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.pdf"
-        criar_pdf_paisagem(df_filtrado_data, data_selecionada_filtro, nome_pdf)
+        # 1. Gerar relatório HTML profissional otimizado para paisagem
+        html_conteudo = gerar_html_paisagem(df_filtrado_data, data_selecionada_filtro)
+        b64 = base64.b64encode(html_conteudo.encode('utf-8')).decode()
+        nome_html = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.html"
         
-        # 2. Disponibilizar download imediato do PDF para anexar facilmente
-        with open(nome_pdf, "rb") as arquivo_pdf:
-            st.download_button(
-                label="📥 1º Clique aqui para baixar o PDF Oficial do Plano (Anexe-o no Outlook)",
-                data=arquivo_pdf,
-                file_name=nome_pdf,
-                mime="application/pdf",
-                type="primary",
-                use_container_width=True
-            )
+        # 2. Disponibilizar botão de download imediato formatado
+        st.markdown(
+            f'''<div style="background-color: #1e293b; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+                <span style="color: white; font-weight: bold; font-size: 14px;">📥 Relatório pronto! </span>
+                <a href="data:text/html;base64,{b64}" download="{nome_html}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o Relatório em PDF/HTML (Anexe no Outlook)</a>
+            </div>''',
+            unsafe_allow_html=True
+        )
         
         # 3. Acionar Outlook para checagem final
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
@@ -406,7 +369,7 @@ Atenciosamente,
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook aberto para checagem final! O PDF profissional foi gerado com sucesso. Basta descarregá-lo acima, anexar ao e-mail do Outlook e enviar.")
+        st.success("Outlook aberto para checagem final! Baixe o relatório no link azul acima, anexe-o no Outlook e clique em Enviar.")
 
     st.markdown("---")
 
