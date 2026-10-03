@@ -47,7 +47,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal atualizado (sem emoji e renomeado)
+# Título principal atualizado
 st.markdown("<h1>Plano de Limpeza Operacional</h1>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
@@ -81,7 +81,6 @@ try:
                 if 'UID' not in df_persisted.columns:
                     df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
                 
-                # Corrigir registos antigos salvos incorretamente com nomes de turnos na coluna Ativo
                 if 'Ativo' in df_persisted.columns:
                     df_persisted['Ativo'] = df_persisted['Ativo'].apply(
                         lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
@@ -224,7 +223,7 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
-        # Extração estritamente segura do Ativo (bloqueando qualquer nome de turno)
+        # Extração segura do Ativo
         ativo_extraido = "GERAL"
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
@@ -241,7 +240,6 @@ try:
             if len(partes) > 0:
                 ativo_extraido = partes[0][:8]
 
-        # Garantia final absoluta contra nomes de turnos no ativo
         if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
             partes = cod_atividade_escolhido.split('.')
             ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
@@ -272,11 +270,10 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (RETRATO)
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
-    # Assegurar que nenhuma linha exibida tenha nome de turno na coluna Ativo
     if not df_plano_atual.empty and 'Ativo' in df_plano_atual.columns:
         df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
@@ -287,7 +284,7 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    def gerar_html_impressao(df_dados, data_plano):
+    def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -295,28 +292,29 @@ try:
             <meta charset="utf-8">
             <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
-                @page {{ size: landscape; margin: 10mm; }}
-                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; }}
-                .header {{ border-bottom: 3px solid #003366; padding-bottom: 10px; margin-bottom: 20px; }}
-                .header h1 {{ margin: 0; font-size: 22px; color: #003366; }}
-                .header p {{ margin: 5px 0 0 0; color: #475569; font-size: 13px; }}
-                h2 {{ color: #003366; background-color: #f1f5f9; padding: 8px 12px; margin-top: 20px; font-size: 14px; border-left: 5px solid #003366; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }}
-                th {{ background-color: #003366; color: white; padding: 8px; text-align: left; }}
-                td {{ padding: 7px; border: 1px solid #cbd5e1; }}
+                @page {{ 
+                    size: portrait; 
+                    margin: 8mm; 
+                }}
+                body {{ 
+                    font-family: Arial, sans-serif; 
+                    color: #0f172a; 
+                    margin: 0; 
+                    padding: 10px; 
+                    transform: scale(0.9);
+                    transform-origin: top left;
+                }}
+                .header {{ border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 15px; }}
+                .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
+                .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
+                h2 {{ color: #003366; background-color: #f1f5f9; padding: 6px 10px; margin-top: 15px; font-size: 12px; border-left: 4px solid #003366; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9px; page-break-inside: avoid; }}
+                th {{ background-color: #003366; color: white; padding: 6px; text-align: left; }}
+                td {{ padding: 5px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
-                .print-btn {{
-                    background-color: #003366; color: white; border: none; padding: 10px 20px;
-                    font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 20px;
-                }}
-                .print-btn:hover {{ background-color: #002244; }}
-                @media print {{
-                    .print-btn {{ display: none; }}
-                }}
             </style>
         </head>
         <body>
-            <button class="print-btn" onclick="window.print()">🖨️ Clique aqui para Imprimir ou Salvar em PDF</button>
             <div class="header">
                 <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
                 <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
@@ -335,7 +333,18 @@ try:
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Status', '')}</td></tr>"
                     html += "</tbody></table>"
                     
-        html += "</body></html>"
+        html += """
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() {
+                        window.parent.postMessage({type: 'close_print'}, '*');
+                    }, 500);
+                }
+            </script>
+        </body>
+        </html>
+        """
         return html
 
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
@@ -350,10 +359,11 @@ try:
             if st.button("🖨️ Imprimir", use_container_width=True, type="primary"):
                 st.session_state['mostrar_impressao'] = True
                 
+                # Nome exato do ficheiro dinâmico: Plano_de_Limpeza_ddmmhhmm
                 timestamp_str = datetime.now().strftime("%d%m%H%M")
-                nome_arquivo_download = f"Plano de Limpeza Operacional_{timestamp_str}.html"
+                nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
                 
-                html_para_download = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
+                html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
                 b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
                 
                 st.markdown(
@@ -388,18 +398,8 @@ try:
     """, unsafe_allow_html=True)
 
     if st.session_state.get('mostrar_impressao', False) and not df_filtrado_data.empty:
-        st.markdown("---")
-        col_voltar, col_info_imp = st.columns([2, 6])
-        with col_voltar:
-            if st.button("✖️ Fechar Pré-visualização"):
-                st.session_state['mostrar_impressao'] = False
-                st.rerun()
-        with col_info_imp:
-            st.info("Arquivo HTML descarregado na pasta de downloads! Utilize também o botão azul superior dentro do relatório para imprimir ou gravar em PDF.")
-        
-        html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
-        components.html(html_impressao, height=600, scrolling=True)
-        st.markdown("---")
+        html_impressao = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
+        components.html(html_impressao, height=1, scrolling=False)
 
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
