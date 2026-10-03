@@ -47,9 +47,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel alinhado no topo absoluto com o emoji ✨
+# Título principal do painel alinhado no topo absoluto (sem subtítulo)
 st.markdown("<h1>✨ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color: #a0a0a0; margin-top: -10px;'>Motor de regras automatizado para planejamento diário, análise de frequência e tomada de decisão operacional.</p>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
 @st.cache_data
@@ -219,14 +218,22 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
+        # Extração segura do Ativo (evitando que o turno seja colocado no lugar do ativo)
+        ativo_extraido = "GERAL"
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
             if not resultado_sql.empty:
-                ativo_extraido = str(resultado_sql[col_ativo].iloc[0]).upper()
-            else:
-                ativo_extraido = "GERAL"
+                val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
+                if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
+                    ativo_extraido = val_ativo
+                else:
+                    partes = cod_atividade_escolhido.split('.')
+                    if len(partes) > 0 and len(partes[0]) >= 4:
+                        ativo_extraido = partes[0][:8]
         else:
-            ativo_extraido = "GERAL"
+            partes = cod_atividade_escolhido.split('.')
+            if len(partes) > 0:
+                ativo_extraido = partes[0][:8]
 
         st.info(f"{descricao_atividade}")
 
@@ -254,7 +261,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE DOWNLOAD ALINHADOS
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO ROBUSTA
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -263,51 +270,31 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
-    with col_tit_grade:
-        st.markdown("### 📋 Grade de Planejamento Diário")
-    with col_filtro_grade:
-        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
-    with col_down_grade:
-        df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
-        if not df_filtrado_data.empty:
-            csv_export = df_filtrado_data.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Baixar Plano do Dia (CSV)",
-                data=csv_export,
-                file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        else:
-            st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
-
-    # ==========================================
-    # FUNÇÃO DE GERAÇÃO DE RELATÓRIO HTML PROFISSIONAL (IMPRESSÃO PDF PAISAGEM)
-    # ==========================================
-    def gerar_html_paisagem(df_dados, data_plano):
+    # Função de geração do HTML de Impressão Paisagem Profissional
+    def gerar_html_impressao(df_dados, data_plano):
         html = f"""
+        <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <title>Plano de Limpeza Ferroport - {data_plano}</title>
             <style>
-                @page {{ size: landscape; margin: 15mm; }}
-                body {{ font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }}
-                h2 {{ color: #0f172a; border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin-top: 25px; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }}
+                @page {{ size: landscape; margin: 10mm; }}
+                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; }}
+                .header {{ border-bottom: 3px solid #1e293b; padding-bottom: 10px; margin-bottom: 20px; }}
+                .header h1 {{ margin: 0; font-size: 22px; color: #0f172a; }}
+                .header p {{ margin: 5px 0 0 0; color: #475569; font-size: 13px; }}
+                h2 {{ color: #1e293b; background-color: #f1f5f9; padding: 8px 12px; margin-top: 20px; font-size: 14px; border-left: 5px solid #0284c7; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }}
                 th {{ background-color: #1e293b; color: white; padding: 8px; text-align: left; }}
                 td {{ padding: 7px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
-                .header {{ margin-bottom: 20px; }}
-                .header h1 {{ margin: 0; font-size: 20px; color: #0f172a; }}
-                .header p {{ margin: 5px 0 0 0; color: #64748b; font-size: 12px; }}
             </style>
         </head>
         <body>
             <div class="header">
                 <h1>✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
-                <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data:</b> {data_plano}</p>
+                <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
             </div>
         """
         
@@ -323,8 +310,39 @@ try:
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Status', '')}</td></tr>"
                     html += "</tbody></table>"
                     
-        html += "</body></html>"
+        html += """
+            <script>
+                window.onload = function() {
+                    window.print();
+                }
+            </script>
+        </body>
+        </html>
+        """
         return html
+
+    col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
+    with col_tit_grade:
+        st.markdown("### 📋 Grade de Planejamento Diário")
+    with col_filtro_grade:
+        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
+    with col_down_grade:
+        df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+        
+        if not df_filtrado_data.empty:
+            html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
+            b64_print = base64.b64encode(html_impressao.encode('utf-8')).decode()
+            
+            st.markdown(
+                f'''<a href="data:text/html;base64,{b64_print}" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #ff4b4b; color: white; text-align: center; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 0px;">
+                        🖨️ Imprimir Plano
+                    </div>
+                </a>''',
+                unsafe_allow_html=True
+            )
+        else:
+            st.button("🖨️ Imprimir Plano", disabled=True, use_container_width=True)
 
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
@@ -335,24 +353,21 @@ try:
     with col_input_email:
         lista_emails = st.text_input("Destinatários", value="operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br", label_visibility="collapsed")
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        # 1. Gerar relatório HTML profissional otimizado para paisagem
-        html_conteudo = gerar_html_paisagem(df_filtrado_data, data_selecionada_filtro)
-        b64 = base64.b64encode(html_conteudo.encode('utf-8')).decode()
+        html_conteudo_email = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
+        b64 = base64.b64encode(html_conteudo_email.encode('utf-8')).decode()
         nome_html = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.html"
         
-        # 2. Disponibilizar botão de download imediato formatado
         st.markdown(
             f'''<div style="background-color: #1e293b; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
                 <span style="color: white; font-weight: bold; font-size: 14px;">📥 Relatório pronto! </span>
-                <a href="data:text/html;base64,{b64}" download="{nome_html}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o Relatório em PDF/HTML (Anexe no Outlook)</a>
+                <a href="data:text/html;base64,{b64}" download="{nome_html}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o Relatório (Anexe no Outlook)</a>
             </div>''',
             unsafe_allow_html=True
         )
         
-        # 3. Acionar Outlook para checagem final
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
