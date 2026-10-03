@@ -3,6 +3,10 @@ import pandas as pd
 from datetime import datetime
 import os
 import urllib.parse
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
 # Configuração da página para o modo largo (wide)
 st.set_page_config(
@@ -141,7 +145,7 @@ try:
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO
     # ==========================================
-    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
+    st.sidebar.markdown("### 🎛️️ MENU DE PLANEJAMENTO")
 
     with st.sidebar.form("form_inserir_atividade"):
         
@@ -282,7 +286,84 @@ try:
             st.button("📥 Baixar Plano do Dia (CSV)", disabled=True, use_container_width=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (COM ORIENTAÇÃO CLARA)
+    # FUNÇÃO DE GERAÇÃO DO RELATÓRIO PROFISSIONAL EM PDF (PAISAGEM)
+    # ==========================================
+    def criar_pdf_paisagem(df_dados, data_plano, caminho_pdf):
+        doc = SimpleDocTemplate(
+            caminho_pdf,
+            pagesize=landscape(letter),
+            rightMargin=30, leftMargin=30,
+            topMargin=30, bottomMargin=30
+        )
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Estilos personalizados profissionais
+        estilo_titulo = ParagraphStyle(
+            'TituloEmpresa',
+            parent=styles['Heading1'],
+            fontSize=16,
+            textColor=colors.HexColor("#0f172a"),
+            spaceAfter=4,
+            fontName='Helvetica-Bold'
+        )
+        estilo_sub = ParagraphStyle(
+            'SubTituloEmpresa',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor("#64748b"),
+            spaceAfter=15,
+            fontName='Helvetica'
+        )
+        
+        story.append(Paragraph("✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL", estilo_titulo))
+        story.append(Paragraph(f"Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data:</b> {data_plano}", estilo_sub))
+        
+        if df_dados.empty:
+            story.append(Paragraph("Nenhuma atividade registada para esta data.", styles['Normal']))
+        else:
+            for turno_nome in ["DIURNO", "ADM", "NOTURNO"]:
+                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == turno_nome]
+                if not df_t.empty:
+                    story.append(Paragraph(f"<b>TURNO: {turno_nome}</b>", styles['Heading2']))
+                    story.append(Spacer(1, 4))
+                    
+                    tabela_dados = [["Nº", "Cód. Atividade", "Hora Ini.", "Hora Fim.", "Ativo", "NR12", "Dados da Atividade", "Status"]]
+                    for idx, (_, row) in enumerate(df_t.iterrows(), 1):
+                        tabela_dados.append([
+                            str(idx),
+                            str(row.get('Cód. Atividade', '')),
+                            str(row.get('Hora Inicial', '')),
+                            str(row.get('Hora Final', '')),
+                            str(row.get('Ativo', '')),
+                            str(row.get('Retirada NR12', '')),
+                            str(row.get('Dados da Atividade', '')),
+                            str(row.get('Status', ''))
+                        ])
+                    
+                    # Larguras ajustadas para preencher perfeitamente a página em paisagem (730 pts úteis)
+                    t = Table(tabela_dados, colWidths=[30, 95, 60, 60, 85, 75, 255, 70])
+                    t.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1e293b")),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 9),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                        ('TOPPADDING', (0, 0), (-1, 0), 6),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#f8fafc")),
+                        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                        ('FONTSIZE', (0, 1), (-1, -1), 8),
+                        ('TOPPADDING', (0, 1), (-1, -1), 5),
+                        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+                    ]))
+                    story.append(t)
+                    story.append(Spacer(1, 12))
+                    
+        doc.build(story)
+
+    # ==========================================
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK COM PDF
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -293,6 +374,22 @@ try:
         btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
+        # 1. Gerar arquivo PDF profissional em paisagem
+        nome_pdf = f"Plano_Limpeza_{data_selecionada_filtro.replace('/', '-')}.pdf"
+        criar_pdf_paisagem(df_filtrado_data, data_selecionada_filtro, nome_pdf)
+        
+        # 2. Disponibilizar download imediato do PDF para anexar facilmente
+        with open(nome_pdf, "rb") as arquivo_pdf:
+            st.download_button(
+                label="📥 1º Clique aqui para baixar o PDF Oficial do Plano (Anexe-o no Outlook)",
+                data=arquivo_pdf,
+                file_name=nome_pdf,
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True
+            )
+        
+        # 3. Acionar Outlook para checagem final
         responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
@@ -308,19 +405,8 @@ Atenciosamente,
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        # Gerar também o CSV consolidado do dia para download imediato para facilitar o anexo
-        if not df_filtrado_data.empty:
-            csv_bytes = df_filtrado_data.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📎 Clique aqui para descarregar o Relatório do Dia e anexar ao Outlook",
-                data=csv_bytes,
-                file_name=f"Plano_Operacional_{data_selecionada_filtro.replace('/', '-')}.csv",
-                mime="text/csv",
-                type="primary"
-            )
-        
         st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook acionado! A mensagem foi aberta com os destinatários preenchidos. Basta anexar o relatório descarregado acima e clicar em Enviar.")
+        st.success("Outlook aberto para checagem final! O PDF profissional foi gerado com sucesso. Basta descarregá-lo acima, anexar ao e-mail do Outlook e enviar.")
 
     st.markdown("---")
 
