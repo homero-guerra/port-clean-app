@@ -47,8 +47,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Título principal do painel alinhado no topo absoluto (sem subtítulo)
-st.markdown("<h1>✨ Plano de Limpeza Ferroport</h1>", unsafe_allow_html=True)
+# Título principal atualizado (sem emoji e renomeado)
+st.markdown("<h1>Plano de Limpeza Operacional</h1>", unsafe_allow_html=True)
 
 # Função para carregar e processar os dados com segurança e deteção de delimitador
 @st.cache_data
@@ -80,6 +80,12 @@ try:
                 df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
                 if 'UID' not in df_persisted.columns:
                     df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
+                
+                # Corrigir registos antigos salvos incorretamente com nomes de turnos na coluna Ativo
+                if 'Ativo' in df_persisted.columns:
+                    df_persisted['Ativo'] = df_persisted['Ativo'].apply(
+                        lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+                    )
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
@@ -218,7 +224,7 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
-        # Extração segura do Ativo
+        # Extração estritamente segura do Ativo (bloqueando qualquer nome de turno)
         ativo_extraido = "GERAL"
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
@@ -234,6 +240,11 @@ try:
             partes = cod_atividade_escolhido.split('.')
             if len(partes) > 0:
                 ativo_extraido = partes[0][:8]
+
+        # Garantia final absoluta contra nomes de turnos no ativo
+        if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
+            partes = cod_atividade_escolhido.split('.')
+            ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
         st.info(f"{descricao_atividade}")
 
@@ -261,9 +272,15 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (METADE DA LARGURA)
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+    
+    # Assegurar que nenhuma linha exibida tenha nome de turno na coluna Ativo
+    if not df_plano_atual.empty and 'Ativo' in df_plano_atual.columns:
+        df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
+            lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+        )
     
     if not df_plano_atual.empty and 'DATA' in df_plano_atual.columns:
         datas_disponiveis = sorted(df_plano_atual['DATA'].dropna().unique().tolist())
@@ -276,7 +293,7 @@ try:
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Plano de Limpeza Ferroport - {data_plano}</title>
+            <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
                 @page {{ size: landscape; margin: 10mm; }}
                 body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; }}
@@ -301,7 +318,7 @@ try:
         <body>
             <button class="print-btn" onclick="window.print()">🖨️ Clique aqui para Imprimir ou Salvar em PDF</button>
             <div class="header">
-                <h1>✨ FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
+                <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
                 <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
             </div>
         """
@@ -321,7 +338,6 @@ try:
         html += "</body></html>"
         return html
 
-    # Colunas ajustadas para que o botão "Imprimir Plano" fique com 50% da largura anterior
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
@@ -334,7 +350,6 @@ try:
             if st.button("🖨️ Imprimir", use_container_width=True, type="primary"):
                 st.session_state['mostrar_impressao'] = True
                 
-                # Gerar nome com data e hora (ddmmhhmm) na pasta de downloads
                 timestamp_str = datetime.now().strftime("%d%m%H%M")
                 nome_arquivo_download = f"Plano de Limpeza Operacional_{timestamp_str}.html"
                 
@@ -372,7 +387,6 @@ try:
     </style>
     """, unsafe_allow_html=True)
 
-    # Exibir a pré-visualização de impressão robusta integrada quando solicitado
     if st.session_state.get('mostrar_impressao', False) and not df_filtrado_data.empty:
         st.markdown("---")
         col_voltar, col_info_imp = st.columns([2, 6])
@@ -441,7 +455,6 @@ Atenciosamente,
             
             selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
             
-            # Botão "Excluir" com largura reduzida
             col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
             with col_titulo_bloco:
                 html_cabecalho = f"""
