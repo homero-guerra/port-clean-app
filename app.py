@@ -40,10 +40,9 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
     
-    /* Padronizar todos os botões para ocuparem 100% da coluna */
+    /* Padronizar botões gerais */
     div[data-testid="stButton"] button {
         font-weight: bold;
-        width: 100% !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -262,7 +261,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO REDUZIDO (PADRÃO FERROPORT)
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -271,7 +270,6 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
-    # Função geradora do HTML de Impressão Paisagem
     def gerar_html_impressao(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -282,19 +280,19 @@ try:
             <style>
                 @page {{ size: landscape; margin: 10mm; }}
                 body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; }}
-                .header {{ border-bottom: 3px solid #1e293b; padding-bottom: 10px; margin-bottom: 20px; }}
-                .header h1 {{ margin: 0; font-size: 22px; color: #0f172a; }}
+                .header {{ border-bottom: 3px solid #003366; padding-bottom: 10px; margin-bottom: 20px; }}
+                .header h1 {{ margin: 0; font-size: 22px; color: #003366; }}
                 .header p {{ margin: 5px 0 0 0; color: #475569; font-size: 13px; }}
-                h2 {{ color: #1e293b; background-color: #f1f5f9; padding: 8px 12px; margin-top: 20px; font-size: 14px; border-left: 5px solid #0284c7; }}
+                h2 {{ color: #003366; background-color: #f1f5f9; padding: 8px 12px; margin-top: 20px; font-size: 14px; border-left: 5px solid #003366; }}
                 table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }}
-                th {{ background-color: #1e293b; color: white; padding: 8px; text-align: left; }}
+                th {{ background-color: #003366; color: white; padding: 8px; text-align: left; }}
                 td {{ padding: 7px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
                 .print-btn {{
-                    background-color: #0284c7; color: white; border: none; padding: 10px 20px;
+                    background-color: #003366; color: white; border: none; padding: 10px 20px;
                     font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 20px;
                 }}
-                .print-btn:hover {{ background-color: #0369a1; }}
+                .print-btn:hover {{ background-color: #002244; }}
                 @media print {{
                     .print-btn {{ display: none; }}
                 }}
@@ -323,7 +321,7 @@ try:
         html += "</body></html>"
         return html
 
-    col_tit_grade, col_filtro_grade, col_down_grade = st.columns([4, 2, 2])
+    col_tit_grade, col_filtro_grade, col_btn_espaco, col_down_grade = st.columns([3.5, 2.0, 0.5, 2.0])
     with col_tit_grade:
         st.markdown("### 📋 Grade de Planejamento Diário")
     with col_filtro_grade:
@@ -334,8 +332,45 @@ try:
         if not df_filtrado_data.empty:
             if st.button("🖨️ Imprimir Plano", use_container_width=True, type="primary"):
                 st.session_state['mostrar_impressao'] = True
+                
+                # Gerar nome com data e hora (ddmmhhmm)
+                timestamp_str = datetime.now().strftime("%d%m%H%M")
+                nome_arquivo_download = f"Plano de Limpeza Operacional_{timestamp_str}.html"
+                
+                html_para_download = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
+                b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
+                
+                # Script para disparar o download automático para a pasta de downloads do usuário
+                st.markdown(
+                    f"""
+                    <script>
+                        var link = document.createElement('a');
+                        link.href = 'data:text/html;base64,{b64_down}';
+                        link.download = '{nome_arquivo_download}';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
         else:
             st.button("🖨️ Imprimir Plano", disabled=True, use_container_width=True)
+
+    # Estilização para o botão primário com padrão Ferroport (#003366)
+    st.markdown("""
+    <style>
+        button[kind="primary"] {
+            background-color: #003366 !important;
+            border-color: #003366 !important;
+            color: white !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #002244 !important;
+            border-color: #002244 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Exibir a pré-visualização de impressão robusta integrada quando solicitado
     if st.session_state.get('mostrar_impressao', False) and not df_filtrado_data.empty:
@@ -346,7 +381,7 @@ try:
                 st.session_state['mostrar_impressao'] = False
                 st.rerun()
         with col_info_imp:
-            st.info("Visualização pronta. Clique no botão azul superior dentro do relatório para imprimir ou gravar como PDF.")
+            st.info("Arquivo HTML descarregado na pasta de downloads! Utilize também o botão azul acima para imprimir ou guardar em PDF.")
         
         html_impressao = gerar_html_impressao(df_filtrado_data, data_selecionada_filtro)
         components.html(html_impressao, height=600, scrolling=True)
@@ -406,7 +441,8 @@ Atenciosamente,
             
             selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
             
-            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.0, 0.5, 1.5])
+            # Botão "Excluir Linha" com largura reduzida em 50%
+            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
             with col_titulo_bloco:
                 html_cabecalho = f"""
                 <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -421,7 +457,7 @@ Atenciosamente,
                 st.markdown(html_cabecalho, unsafe_allow_html=True)
             
             with col_botao_excluir:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
