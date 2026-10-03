@@ -291,7 +291,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E GESTÃO DE DATAS ANTES DE QUALQUER USO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -305,9 +305,15 @@ try:
     else:
         datas_disponiveis = [datetime.now().strftime('%d/%m/%Y')]
 
+    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
+    with col_tit_grade:
+        st.markdown("### 📋 Grade de Planejamento Diário")
+    with col_filtro_grade:
+        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
+    
     df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
 
-    # Extrair metadados unificados do Turno Diurno para replicar no ADM
+    # Extrair metadados unificados do Turno Diurno para replicar no ADM e Impressão
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
     if not df_diurno_ref.empty:
         turma_comum = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
@@ -318,6 +324,7 @@ try:
         chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
         data_comum = data_selecionada_filtro
 
+    # Função HTML de Impressão com os metadados inclusos nos títulos
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -408,11 +415,6 @@ try:
         """
         return html
 
-    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.5, 2.2, 1.3, 1.0])
-    with col_tit_grade:
-        st.markdown("### 📋 Grade de Planejamento Diário")
-    with col_filtro_grade:
-        data_selecionada_filtro = st.selectbox("🔍 Pesquisar Plano por Data", options=datas_disponiveis, index=len(datas_disponiveis)-1, label_visibility="collapsed")
     with col_down_grade:
         if not df_filtrado_data.empty:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
