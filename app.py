@@ -375,7 +375,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (UNIFICADO)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (BOTÃO ÚNICO DE AÇÃO)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -400,16 +400,7 @@ try:
         html_corpo_pdf = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
         b64_pdf = base64.b64encode(html_corpo_pdf.encode('utf-8')).decode()
         
-        st.markdown(
-            f'''<div style="background-color: #003366; padding: 12px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
-                <span style="color: white; font-weight: bold; font-size: 14px;">📎 Plano pronto para anexo! </span>
-                <a href="data:text/html;base64,{b64_pdf}" download="{nome_pdf_anexo}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: underline; margin-left: 10px;">Clique aqui para baixar o PDF/Relatório e anexar ao Outlook</a>
-            </div>''',
-            unsafe_allow_html=True
-        )
-        
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
-        # Corpo da mensagem limpo, sem o nome do chefe duplicado
         corpo = f"""Prezados(as),
 
 Segue o Plano de Limpeza para o dia {data_selecionada_filtro}.
@@ -420,13 +411,27 @@ Atenciosamente,"""
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        # Uso de botão único de redirecionamento para evitar abertura dupla de janelas
+        # Script único que executa o download automático na pasta Downloads E abre o Outlook simultaneamente num único clique
         st.markdown(
-            f'''<div style="background-color: #1e293b; padding: 12px; border-radius: 6px; text-align: center;">
-                <a href="{mailto_link}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: none;">
-                    ✉️ Clique aqui para abrir o Outlook com a mensagem preenchida
-                </a>
-            </div>''',
+            f"""
+            <script>
+                // 1. Download automático na pasta de Downloads
+                var link = document.createElement('a');
+                link.href = 'data:text/html;base64,{b64_pdf}';
+                link.download = '{nome_pdf_anexo}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // 2. Abertura do Outlook com o e-mail preenchido
+                setTimeout(function() {{
+                    window.location.href = "{mailto_link}";
+                }}, 500);
+            </script>
+            <div style="background-color: #003366; padding: 12px; border-radius: 6px; text-align: center; color: white; font-weight: bold;">
+                📎 Plano baixado automaticamente na pasta Downloads e Outlook acionado!
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
