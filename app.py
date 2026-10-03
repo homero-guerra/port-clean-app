@@ -21,12 +21,10 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# ==========================================
-# OPÇÃO 2: FERROPORT OPERAÇÕES PESADAS (ÂMBAR / GRAFITE)
-# ==========================================
+# Estilização CSS para padronização visual com tons suaves e botões compactos na mesma linha
 st.markdown("""
 <style>
-    /* Estilização da barra lateral com o tema Opção 2 */
+    /* Remover espaçamento superior da barra lateral */
     [data-testid="stSidebar"] {
         min-width: 440px !important;
         max-width: 480px !important;
@@ -43,7 +41,7 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
     
-    /* Botões com tom suave de âmbar/laranja industrial */
+    /* Suavizar tons dos botões normais */
     div[data-testid="stButton"] button {
         font-weight: bold;
         background-color: #c67d16 !important;
@@ -54,6 +52,15 @@ st.markdown("""
     div[data-testid="stButton"] button:hover {
         background-color: #e08e1b !important;
         border-color: #ffffff !important;
+    }
+
+    /* Reduzir o tamanho específico dos botões de adicionar/remover chefe (+) e (-) */
+    button[key="b_plus_mini"], button[key="b_minus_mini"] {
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0px 4px !important;
+        font-size: 14px !important;
+        margin-top: 27px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -240,18 +247,16 @@ try:
     with col_turma:
         turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
 
-    # Chefe de Turno com botões "+" e "-" compactos lado a lado logo após
-    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3.6, 0.6, 0.6])
+    # Chefe de Turno com botões "+" e "-" compactos lado a lado exatamente após o campo
+    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3.8, 0.5, 0.5])
     with col_lbl_chefe:
         chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
     with col_btn_plus:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_v2"):
+        if st.sidebar.button("➕", help="Cadastrar Novo Chefe", key="b_plus_mini"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_v2"):
+        if st.sidebar.button("➖", help="Remover Chefe", key="b_minus_mini"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -278,8 +283,8 @@ try:
     if st.session_state.get('mostrar_exclusao_chefe', False):
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_v2")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_v2"):
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_mini")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="btn_conf_exc_mini"):
             chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
             if chefe_a_remover in chefes_base_original:
                 st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
@@ -480,7 +485,7 @@ try:
                     else:
                         t_info = turma_comum
                         c_info = chefe_comum
-                        d_info = data_plano
+                        d_info = data_comum
 
                 if not df_t.empty:
                     html += f"""
@@ -635,7 +640,7 @@ Atenciosamente,"""
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
