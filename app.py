@@ -375,7 +375,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (UNIFICADO)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -409,7 +409,7 @@ try:
         )
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
-        # Corpo da mensagem limpo, sem o nome do chefe no texto
+        # Corpo da mensagem limpo, sem o nome do chefe duplicado
         corpo = f"""Prezados(as),
 
 Segue o Plano de Limpeza para o dia {data_selecionada_filtro}.
@@ -420,8 +420,15 @@ Atenciosamente,"""
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-        st.success("Outlook acionado para revisão! Baixe o ficheiro no link azul acima, anexe-o ao e-mail e envie.")
+        # Uso de botão único de redirecionamento para evitar abertura dupla de janelas
+        st.markdown(
+            f'''<div style="background-color: #1e293b; padding: 12px; border-radius: 6px; text-align: center;">
+                <a href="{mailto_link}" style="color: #38bdf8; font-weight: bold; font-size: 14px; text-decoration: none;">
+                    ✉️ Clique aqui para abrir o Outlook com a mensagem preenchida
+                </a>
+            </div>''',
+            unsafe_allow_html=True
+        )
 
     st.markdown("---")
 
