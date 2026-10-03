@@ -375,7 +375,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK (COM BOTÃO DE FECHAR)
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -388,7 +388,6 @@ try:
     if btn_enviar_outlook:
         st.session_state.mostrar_painel_envio = True
 
-    # Exibir painel de envio apenas se st.session_state.mostrar_painel_envio for True
     if st.session_state.get('mostrar_painel_envio', False):
         col_msg_azul, col_btn_fechar = st.columns([9, 1])
         with col_btn_fechar:
@@ -396,8 +395,6 @@ try:
                 st.session_state.mostrar_painel_envio = False
                 st.rerun()
 
-        responsavel_planejamento = chefe_form if 'chefe_form' in locals() else "Homero Batista Guerra Junior"
-        
         timestamp_str = datetime.now().strftime("%d%m%H%M")
         nome_pdf_anexo = f"Plano_de_Limpeza_{timestamp_str}.html"
         html_corpo_pdf = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
@@ -412,13 +409,12 @@ try:
         )
         
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        # Corpo da mensagem limpo, sem o nome do chefe no texto
         corpo = f"""Prezados(as),
 
 Segue o Plano de Limpeza para o dia {data_selecionada_filtro}.
 
-Atenciosamente,
-
-{responsavel_planejamento}"""
+Atenciosamente,"""
         
         assunto_encoded = urllib.parse.quote(assunto)
         corpo_encoded = urllib.parse.quote(corpo)
