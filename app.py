@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import streamlit.components.v1 as components
 from datetime import datetime
 import os
 import urllib.parse
@@ -100,12 +99,11 @@ try:
                 "Hora Final": "08:00", 
                 "Ativo": "3220TR04", 
                 "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR", 
-                "Status": "Em Execução"
+                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR"
             },
             {
                 "UID": "UID_2_002",
-                "TURMA": "BRANCA", 
+                "TURMA": "AMARELA", 
                 "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
                 "TURNO": "ADM", 
                 "DATA": datetime.now().strftime('%d/%m/%Y'), 
@@ -114,8 +112,7 @@ try:
                 "Hora Final": "17:00", 
                 "Ativo": "CT08", 
                 "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "CONTINUAR RECHEGO NA A4", 
-                "Status": "Em Execução"
+                "Dados da Atividade": "CONTINUAR RECHEGO NA A4"
             }
         ]
 
@@ -189,14 +186,12 @@ try:
                     st.error("Preencha matrícula e nome.")
             st.markdown("---")
 
-        # Reposicionamento: Turno colocado à direita de Turma / Equipe
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
-        # Injetar cor dinâmica baseada na Turma selecionada
         cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
         css_dinamico = f"""
         <style>
@@ -216,7 +211,6 @@ try:
 
         st.markdown("---")
         
-        # Campo de seleção interativo com busca instantânea
         opcao_selecionada = st.selectbox(
             "Selecione o COD. ATIVIDADE", 
             options=lista_opcoes_atividades,
@@ -230,7 +224,6 @@ try:
             cod_atividade_escolhido = opcao_selecionada
             descricao_atividade = "Atividade Operacional Registrada"
 
-        # Extração segura do Ativo
         ativo_extraido = "GERAL"
         if col_cod in df_os.columns and col_ativo in df_os.columns:
             resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
@@ -251,7 +244,6 @@ try:
             partes = cod_atividade_escolhido.split('.')
             ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
-        # Aviso textual atualizado instantaneamente
         st.info(f"{descricao_atividade}")
 
         botao_inserir_form = st.form_submit_button("💾 Incluir na Grade", use_container_width=True)
@@ -269,8 +261,7 @@ try:
                 "Hora Final": hora_fim_form,
                 "Ativo": ativo_extraido,
                 "Retirada NR12": "NÃO",
-                "Dados da Atividade": descricao_atividade,
-                "Status": "Agendado"
+                "Dados da Atividade": descricao_atividade
             }
             st.session_state.plano_operacional.append(novo_registro)
             salvar_plano_nuvem(st.session_state.plano_operacional)
@@ -278,7 +269,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (RETRATO)
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -300,16 +291,8 @@ try:
             <meta charset="utf-8">
             <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
-                @page {{ 
-                    size: portrait; 
-                    margin: 8mm; 
-                }}
-                body {{ 
-                    font-family: Arial, sans-serif; 
-                    color: #0f172a; 
-                    margin: 0; 
-                    padding: 10px; 
-                }}
+                @page {{ size: portrait; margin: 8mm; }}
+                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }}
                 .header {{ border-bottom: 2px solid #003366; padding-bottom: 8mm; margin-bottom: 15px; }}
                 .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
                 .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
@@ -334,17 +317,13 @@ try:
                 df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == turno_nome]
                 if not df_t.empty:
                     html += f"<h2>TURNO: {turno_nome}</h2>"
-                    html += "<table><thead><tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th><th>Status</th></tr></thead><tbody>"
+                    html += "<table><thead><tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr></thead><tbody>"
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Status', '')}</td></tr>"
+                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
                     html += "</tbody></table>"
                     
         html += """
-            <script>
-                window.onload = function() {
-                    window.print();
-                }
-            </script>
+            <script>window.onload = function() { window.print(); }</script>
         </body>
         </html>
         """
@@ -378,6 +357,20 @@ try:
         else:
             st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
 
+    st.markdown("""
+    <style>
+        button[kind="primary"] {
+            background-color: #003366 !important;
+            border-color: #003366 !important;
+            color: white !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #002244 !important;
+            border-color: #002244 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK
     # ==========================================
@@ -410,8 +403,21 @@ Atenciosamente,
 
     st.markdown("---")
 
+    # Extrair metadados unificados baseados no Turno Diurno para replicar no ADM
+    df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
+    if not df_diurno_ref.empty:
+        turma_comum = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
+        chefe_comum = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
+        data_comum = str(df_diurno_ref.iloc[-1].get('DATA', data_selecionada_filtro))
+    else:
+        turma_comum = "AMARELA"
+        chefe_comum = chefe_form if 'chefe_form' in locals() else "20000000 - GERSON FUENTES"
+        data_comum = data_selecionada_filtro
+
+    cor_comum = mapa_cores.get(turma_comum, "#FFD700")
+
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
@@ -419,66 +425,75 @@ Atenciosamente,
     for codigo_turno, titulo_turno in turnos_secoes:
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
-        if not df_turno_atual.empty:
-            ultima_linha = df_turno_atual.iloc[-1]
-            turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
-            chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
-            data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
-            
-            if codigo_turno == "ADM":
-                cor_destaque = "#FFFFFF"
+        # Sincronizar metadados do Turno ADM com o Diurno
+        if codigo_turno == "ADM":
+            turma_info = turma_comum
+            chefe_info = chefe_comum
+            data_info = data_comum
+            cor_destaque = cor_comum
+        else:
+            if not df_turno_atual.empty:
+                ultima_linha = df_turno_atual.iloc[-1]
+                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
+                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
+                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
             else:
-                cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
-            
-            selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
-            
-            col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
-            with col_titulo_bloco:
-                html_cabecalho = f"""
-                <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
-                    <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                    <span style="color: #d0d0d0; font-size: 14px;">
-                        👥 <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                        &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                        &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                    </span>
-                </div>
-                """
-                st.markdown(html_cabecalho, unsafe_allow_html=True)
-            
-            with col_botao_excluir:
-                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                    
-                    if linhas_selecionadas:
-                        uids_a_remover = []
-                        for idx_sel in linhas_selecionadas:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            
-                            if selecao_key in st.session_state:
-                                del st.session_state[selecao_key]
-                            st.session_state[selecao_key] = {"selection": {"rows": []}}
-                                
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("Selecione pelo menos uma linha na tabela.")
+                turma_info = turma_comum
+                chefe_info = chefe_comum
+                data_info = data_comum
+            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
 
+        selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+        
+        col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
+        with col_titulo_bloco:
+            html_cabecalho = f"""
+            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                <span style="color: #d0d0d0; font-size: 14px;">
+                    👥 <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    &nbsp;|&nbsp; 👤 <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+                </span>
+            </div>
+            """
+            st.markdown(html_cabecalho, unsafe_allow_html=True)
+        
+        with col_botao_excluir:
+            if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                estado_grid = st.session_state.get(selecao_key, {})
+                linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+                
+                if linhas_selecionadas:
+                    uids_a_remover = []
+                    for idx_sel in linhas_selecionadas:
+                        if idx_sel < len(df_turno_atual):
+                            uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                            if uid_item:
+                                uids_a_remover.append(uid_item)
+                    
+                    if uids_a_remover:
+                        st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                        salvar_plano_nuvem(st.session_state.plano_operacional)
+                        
+                        if selecao_key in st.session_state:
+                            del st.session_state[selecao_key]
+                        st.session_state[selecao_key] = {"selection": {"rows": []}}
+                            
+                        st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                        st.rerun()
+                else:
+                    st.warning("Selecione pelo menos uma linha na tabela.")
+
+        if not df_turno_atual.empty:
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
                 
             df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Status']
+            # Coluna 'Status' removida da exibição
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
             st.dataframe(
@@ -495,14 +510,11 @@ Atenciosamente,
                     "Ativo": st.column_config.TextColumn("Ativo", width="auto"),
                     "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="auto"),
                     "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="auto"),
-                    "Status": st.column_config.TextColumn("Status", width="auto"),
                     "UID": None
                 },
                 key=selecao_key
             )
-            
         else:
-            st.markdown(f"<h4>{titulo_turno}</h4>", unsafe_allow_html=True)
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
