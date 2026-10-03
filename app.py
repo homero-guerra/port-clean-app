@@ -130,9 +130,6 @@ try:
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = carregar_plano_nuvem()
 
-    if 'mostrar_painel_envio' not in st.session_state:
-        st.session_state.mostrar_painel_envio = False
-
     col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
     col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
     col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
@@ -375,12 +372,13 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK AUTOMÁTICA
+    # CAMPO: LISTA DE DISTRIBUIÇÃO E INTEGRAÇÃO OUTLOOK SIMPLES (MAILTO)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
         st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
+        # Mantém a lista atualizada em tempo real na sessão
         lista_emails = st.text_input(
             "Destinatários", 
             value=st.session_state.get('emails_distribuicao', "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"), 
@@ -389,27 +387,13 @@ try:
         )
         st.session_state.emails_distribuicao = lista_emails
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
-        st.session_state.mostrar_painel_envio = True
-
-    if st.session_state.get('mostrar_painel_envio', False):
-        col_vazio_painel, col_btn_fechar = st.columns([9, 1])
-        with col_btn_fechar:
-            if st.button("✖️ Fechar", use_container_width=True):
-                st.session_state.mostrar_painel_envio = False
-                st.rerun()
-
-        timestamp_str = datetime.now().strftime("%d%m%H%M")
-        nome_pdf_anexo = f"Plano_de_Limpeza_{timestamp_str}.html"
-        html_corpo_pdf = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
-        b64_pdf = base64.b64encode(html_corpo_pdf.encode('utf-8')).decode()
-        
         assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
         corpo = f"""Prezados(as),
 
-Segue o Plano de Limpeza para o dia {data_selecionada_filtro}.
+Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
 
 Atenciosamente,"""
         
@@ -417,26 +401,8 @@ Atenciosamente,"""
         corpo_encoded = urllib.parse.quote(corpo)
         mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
         
-        # Disparo simultâneo e automático do download e abertura do Outlook sem nenhum aviso textual poluindo a tela
-        st.markdown(
-            f"""
-            <script>
-                // 1. Download automático na pasta de Downloads
-                var link = document.createElement('a');
-                link.href = 'data:text/html;base64,{b64_pdf}';
-                link.download = '{nome_pdf_anexo}';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // 2. Abertura automática do Outlook com os e-mails atualizados
-                setTimeout(function() {{
-                    window.location.href = "{mailto_link}";
-                }}, 400);
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
+        # Abre o Outlook instantaneamente com a mensagem limpa e destinatários atualizados
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
 
     st.markdown("---")
 
