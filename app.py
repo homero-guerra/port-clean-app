@@ -189,13 +189,14 @@ try:
                     st.error("Preencha matrícula e nome.")
             st.markdown("---")
 
+        # Reposicionamento: Turno colocado à direita de Turma / Equipe
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
         with col_t2:
             turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
 
-        # Injetar cor dinâmica baseada na Turma selecionada de forma segura
+        # Injetar cor dinâmica baseada na Turma selecionada
         cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
         css_dinamico = f"""
         <style>
@@ -215,7 +216,13 @@ try:
 
         st.markdown("---")
         
-        opcao_selecionada = st.selectbox("Selecione o COD. ATIVIDADE", options=lista_opcoes_atividades)
+        # Campo de seleção interativo com busca instantânea
+        opcao_selecionada = st.selectbox(
+            "Selecione o COD. ATIVIDADE", 
+            options=lista_opcoes_atividades,
+            index=0,
+            placeholder="Digite para pesquisar..."
+        )
 
         if " - " in opcao_selecionada:
             cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
@@ -244,6 +251,7 @@ try:
             partes = cod_atividade_escolhido.split('.')
             ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
+        # Aviso textual atualizado instantaneamente
         st.info(f"{descricao_atividade}")
 
         botao_inserir_form = st.form_submit_button("💾 Incluir na Grade", use_container_width=True)
@@ -270,7 +278,7 @@ try:
             st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO DIRETO (RETRATO)
+    # ÁREA PRINCIPAL: TÍTULO, FILTRO E BOTÃO DE IMPRESSÃO (RETRATO)
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -302,7 +310,7 @@ try:
                     margin: 0; 
                     padding: 10px; 
                 }}
-                .header {{ border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 15px; }}
+                .header {{ border-bottom: 2px solid #003366; padding-bottom: 8mm; margin-bottom: 15px; }}
                 .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
                 .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
                 h2 {{ color: #003366; background-color: #f1f5f9; padding: 6px 10px; margin-top: 15px; font-size: 12px; border-left: 4px solid #003366; }}
@@ -357,7 +365,6 @@ try:
             html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
             b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
             
-            # Botão de impressão nativo com link HTML direto (dispara download e abre a impressão instantaneamente)
             st.markdown(
                 f"""
                 <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
