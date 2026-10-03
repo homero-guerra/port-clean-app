@@ -69,10 +69,11 @@ try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
 
     # ==========================================
-    # PERSISTÊNCIA EM NUVEM (FICHEIRO CSV COMPARTILHADO)
+    # PERSISTÊNCIA EM NUVEM (FICHEIROS DE DADOS E CONFIGURAÇÕES)
     # ==========================================
     ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
     ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
+    ARQUIVO_CONFIG_CHEFES = "config_chefes_nuvem.txt"
 
     def carregar_plano_nuvem():
         if os.path.exists(ARQUIVO_BANCO_DADOS):
@@ -139,12 +140,36 @@ try:
         except:
             pass
 
+    def carregar_chefes_nuvem():
+        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
+        if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+            try:
+                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                    linhas = [line.strip() for line in f if line.strip()]
+                    if linhas:
+                        chefes_iniciais.extend(linhas)
+            except:
+                pass
+        return sorted(list(set(chefes_iniciais)))
+
+    def salvar_chefe_nuvem(novo_chefe):
+        try:
+            chefes_atuais = []
+            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                    chefes_atuais = [line.strip() for line in f if line.strip()]
+            if novo_chefe not in chefes_atuais:
+                chefes_atuais.append(novo_chefe)
+                with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+                    f.write("\n".join(chefes_atuais))
+        except:
+            pass
+
     # ==========================================
     # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
     if 'lista_chefes' not in st.session_state:
-        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
-        st.session_state.lista_chefes = sorted(list(set(chefes_iniciais)))
+        st.session_state.lista_chefes = carregar_chefes_nuvem()
 
     if 'plano_operacional' not in st.session_state:
         st.session_state.plano_operacional = carregar_plano_nuvem()
@@ -203,8 +228,9 @@ try:
                     novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
                     if novo_chefe_str not in st.session_state.lista_chefes:
                         st.session_state.lista_chefes.append(novo_chefe_str)
+                        salvar_chefe_nuvem(novo_chefe_str)
                         st.session_state['mostrar_cadastro_chefe'] = False
-                        st.success("Chefe registado com sucesso!")
+                        st.success("Chefe registado e salvo com sucesso na nuvem!")
                         st.rerun()
                     else:
                         st.warning("Este chefe já está registado.")
@@ -498,7 +524,7 @@ Atenciosamente,"""
     cor_comum = mapa_cores.get(turma_comum, "#FFD700")
 
     turnos_secoes = [
-        ("DIURNO", "☀️️ Turno Diurno"),
+        ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
