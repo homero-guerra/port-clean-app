@@ -5,7 +5,7 @@ import os
 import urllib.parse
 import base64
 
-# Configuração da página para o modo largo (wide)
+# Configuração da página atualizada (título limpo e sem ícone)
 st.set_page_config(
     page_title="Plano de Limpeza",
     layout="wide"
@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS geral para refinamento visual do painel e padronização de botões
+# Estilização CSS para refinamento visual e botões compactos na linha da legenda
 st.markdown("""
 <style>
     /* Remover espaçamento superior da barra lateral */
@@ -41,6 +41,16 @@ st.markdown("""
     /* Padronizar botões gerais */
     div[data-testid="stButton"] button {
         font-weight: bold;
+    }
+
+    /* Reduzir e alinhar os botões (+) e (-) ao lado da legenda de Chefe de Turno */
+    div[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button,
+    div[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] > div:nth-child(3) button {
+        min-height: 28px !important;
+        height: 28px !important;
+        padding: 0px 6px !important;
+        font-size: 12px !important;
+        margin-top: 2px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -220,17 +230,17 @@ try:
         
     st.sidebar.markdown("---")
     
-    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3, 1, 1])
+    # Emojis de adição e exclusão posicionados lado a lado logo após a legenda "Chefe de Turno"
+    col_lbl_chefe, col_btn_plus, col_btn_minus = st.sidebar.columns([3.2, 0.4, 0.4])
     with col_lbl_chefe:
-        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+        st.markdown("<div style='font-size: 14px; font-weight: 600; margin-bottom: -18px;'>Chefe de Turno</div>", unsafe_allow_html=True)
+        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, label_visibility="collapsed", key="sel_chefe_main")
     with col_btn_plus:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➕", key="btn_cad_chefe"):
+        if st.sidebar.button("➕", key="btn_cad_chefe", help="Cadastrar Novo Chefe"):
             st.session_state['mostrar_cadastro_chefe'] = True
             st.session_state['mostrar_exclusao_chefe'] = False
     with col_btn_minus:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("➖", key="btn_exc_chefe"):
+        if st.sidebar.button("➖", key="btn_exc_chefe", help="Remover Chefe"):
             st.session_state['mostrar_exclusao_chefe'] = True
             st.session_state['mostrar_cadastro_chefe'] = False
 
@@ -557,7 +567,7 @@ try:
             label_visibility="collapsed"
         )
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
         salvar_emails_nuvem(lista_emails)
