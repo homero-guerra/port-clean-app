@@ -20,16 +20,24 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS geral para refinamento visual do painel e padronização de botões
+# Estilização CSS para compactar a barra lateral e puxar os campos para cima
 st.markdown("""
 <style>
-    /* Remover espaçamento superior da barra lateral */
+    /* Remover espaçamento superior da barra lateral e compactar elementos */
     [data-testid="stSidebar"] {
         min-width: 420px !important;
         max-width: 460px !important;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
+    }
+    
+    /* Puxar os elementos e margens para cima na barra lateral */
+    [data-testid="stSidebar"] .block-container {
+        padding-top: 0.5rem !important;
+    }
+    [data-testid="stSidebar"] .element-container {
+        margin-bottom: -0.4rem !important;
     }
     
     /* Remover espaçamento superior da página principal */
@@ -185,8 +193,8 @@ try:
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    # Linha 1: Data, Hora Inicial e Hora Final lado a lado
-    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.4, 1.4])
+    # Linha 1: Data, Hora Inicial e Hora Final alinhados lado a lado
+    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.2, 1.2])
     with col_d:
         data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
     with col_h1:
@@ -194,10 +202,8 @@ try:
     with col_h2:
         hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8)
         
-    st.sidebar.markdown("---")
-    
-    # Linha 2: Turma / Equipe e Turno lado a lado (nessa ordem exata)
-    col_turma, col_turno = st.sidebar.columns([1.4, 1.4])
+    # Linha 2: Turma / Equipe e Turno alinhados lado a lado nessa ordem exata
+    col_turma, col_turno = st.sidebar.columns([1.5, 1.5])
     with col_turma:
         turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
     with col_turno:
@@ -486,7 +492,7 @@ try:
             label_visibility="collapsed"
         )
     with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+        btn_enviar_outlook = st.button("✉️️ Enviar Plano", use_container_width=True)
 
     if btn_enviar_outlook:
         salvar_emails_nuvem(lista_emails)
@@ -508,7 +514,7 @@ Atenciosamente,"""
     st.markdown("---")
 
     turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
+        ("DIURNO", "☀️️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
         ("NOTURNO", "🌙 Turno Noturno")
     ]
