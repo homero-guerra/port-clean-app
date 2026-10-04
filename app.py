@@ -20,24 +20,22 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para compactar a barra lateral e puxar os campos para cima
+# Estilização CSS para reduzir largura dos campos e compactar a barra lateral
 st.markdown("""
 <style>
-    /* Remover espaçamento superior da barra lateral e compactar elementos */
+    /* Compactar e puxar elementos para cima na barra lateral */
     [data-testid="stSidebar"] {
-        min-width: 420px !important;
-        max-width: 460px !important;
+        min-width: 380px !important;
+        max-width: 420px !important;
     }
     [data-testid="stSidebar"] > div:first-child {
         padding-top: 0rem !important;
     }
-    
-    /* Puxar os elementos e margens para cima na barra lateral */
     [data-testid="stSidebar"] .block-container {
-        padding-top: 0.5rem !important;
+        padding-top: 0.2rem !important;
     }
     [data-testid="stSidebar"] .element-container {
-        margin-bottom: -0.4rem !important;
+        margin-bottom: -0.5rem !important;
     }
     
     /* Remover espaçamento superior da página principal */
@@ -193,8 +191,8 @@ try:
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    # Linha 1: Data, Hora Inicial e Hora Final alinhados lado a lado com largura reduzida proporcional
-    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.0, 1.0])
+    # Linha 1: Data, Hora Inicial e Hora Final em 3 colunas iguais (reduzindo a largura de cada um para 33%)
+    col_d, col_h1, col_h2 = st.sidebar.columns([1, 1, 1])
     with col_d:
         data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
     with col_h1:
@@ -202,14 +200,14 @@ try:
     with col_h2:
         hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8)
         
-    # Linha 2: Turma / Equipe e Turno alinhados lado a lado com largura reduzida proporcional
-    col_turma, col_turno = st.sidebar.columns([1.0, 1.0])
+    # Linha 2: Turma / Equipe e Turno em 2 colunas iguais (reduzindo a largura de cada um para 50%)
+    col_turma, col_turno = st.sidebar.columns([1, 1])
     with col_turma:
         turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno
+    # Linha 3: Chefe de Turno (largura total)
     chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
 
     cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
