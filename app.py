@@ -5,10 +5,9 @@ import os
 import urllib.parse
 import base64
 
-# Configuração da página para o modo largo (wide)
+# Configuração da página atualizada (título limpo e sem ícone)
 st.set_page_config(
-    page_title="Plano de Limpeza Ferroport - Gestão de Limpeza Industrial",
-    page_icon="✨",
+    page_title="Plano de Limpeza",
     layout="wide"
 )
 
@@ -401,18 +400,26 @@ try:
             with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
                 st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
-    # Extrair metadados unificados do Turno Diurno para replicar no ADM e Impressão
+    # Extrair metadados específicos para cada Turno individualmente (Diurno e ADM independentes)
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
     if not df_diurno_ref.empty:
-        turma_comum = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_comum = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-        data_comum = str(df_diurno_ref.iloc[-1].get('DATA', data_selecionada_filtro))
+        turma_diurno = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
+        chefe_diurno = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
     else:
-        turma_comum = "AMARELA"
-        chefe_comum = "20000000 - GERSON FUENTES"
-        data_comum = data_selecionada_filtro
+        turma_diurno = "AMARELA"
+        chefe_diurno = "20000000 - GERSON FUENTES"
 
-    # Função HTML de Impressão com os metadados inclusos nos títulos
+    df_adm_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "ADM"] if not df_filtrado_data.empty else pd.DataFrame()
+    if not df_adm_ref.empty:
+        turma_adm = str(df_adm_ref.iloc[-1].get('TURMA', 'ADM')).strip().upper()
+        chefe_adm = str(df_adm_ref.iloc[-1].get('CHEFE_TURNO', df_adm_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
+    else:
+        turma_adm = "ADM"
+        chefe_adm = "20000000 - GERSON FUENTES"
+
+    data_comum = data_selecionada_filtro
+
+    # Função HTML de Impressão com os metadados corretos por turno
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""
         <!DOCTYPE html>
@@ -463,19 +470,15 @@ try:
                 df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
                 
                 if codigo_turno == "ADM":
-                    t_info = turma_comum
-                    c_info = chefe_comum
-                    d_info = data_comum
+                    t_info = turma_adm
+                    c_info = chefe_adm
+                elif codigo_turno == "DIURNO":
+                    t_info = turma_diurno
+                    c_info = chefe_diurno
                 else:
-                    if not df_t.empty:
-                        ultima_linha = df_t.iloc[-1]
-                        t_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
-                        c_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
-                        d_info = str(ultima_linha.get('DATA', data_plano))
-                    else:
-                        t_info = turma_comum
-                        c_info = chefe_comum
-                        d_info = data_comum
+                    t_info = "N/D"
+                    c_info = "N/D"
+                d_info = data_plano
 
                 if not df_t.empty:
                     html += f"""
@@ -583,8 +586,6 @@ Atenciosamente,"""
 
     st.markdown("---")
 
-    cor_comum = mapa_cores.get(turma_comum, "#FFD700")
-
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
@@ -595,10 +596,15 @@ Atenciosamente,"""
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if codigo_turno == "ADM":
-            turma_info = turma_comum
-            chefe_info = chefe_comum
+            turma_info = turma_adm
+            chefe_info = chefe_adm
             data_info = data_comum
-            cor_destaque = cor_comum
+            cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
+        elif codigo_turno == "DIURNO":
+            turma_info = turma_diurno
+            chefe_info = chefe_diurno
+            data_info = data_comum
+            cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
         else:
             if not df_turno_atual.empty:
                 ultima_linha = df_turno_atual.iloc[-1]
@@ -606,9 +612,9 @@ Atenciosamente,"""
                 chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
                 data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
             else:
-                turma_info = turma_comum
-                chefe_info = chefe_comum
-                data_info = data_comum
+                turma_info = "AMARELA"
+                chefe_info = chefe_diurno
+                data_info = data_selecionada_filtro
             cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
