@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para compactar espaçamentos verticais na página e barra lateral
+# Estilização CSS para compactar entrelinhas, margens e aproximar a Lista de Distribuição
 st.markdown("""
 <style>
     /* Compactar e puxar elementos para cima na barra lateral */
@@ -38,12 +38,17 @@ st.markdown("""
         margin-bottom: -0.4rem !important;
     }
     
-    /* Compactar espaços verticais gerais da página principal */
+    /* Compactar entrelinhas e espaços verticais gerais da página principal */
     .block-container {
-        padding-top: 1.0rem !important;
-        padding-bottom: 1.5rem !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 1rem !important;
     }
     h1 {
+        margin-bottom: 0.1rem !important;
+    }
+    
+    /* Reduzir espaçamento entre as seções de blocos na tela */
+    div.element-container {
         margin-bottom: 0.2rem !important;
     }
     
@@ -476,10 +481,9 @@ try:
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
     # ==========================================
-    st.markdown("<br>", unsafe_allow_html=True)
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
     with col_lbl_dist:
-        st.markdown("<div style='padding-top: 8px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-top: 6px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
         def atualizar_emails_callback():
             novo_valor = st.session_state.input_emails_state
@@ -566,7 +570,7 @@ Atenciosamente,"""
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
