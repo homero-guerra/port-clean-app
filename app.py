@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para compactar a barra lateral e puxar os campos para cima
+# Estilização CSS para compactar espaçamentos verticais na página e barra lateral
 st.markdown("""
 <style>
     /* Compactar e puxar elementos para cima na barra lateral */
@@ -38,10 +38,13 @@ st.markdown("""
         margin-bottom: -0.4rem !important;
     }
     
-    /* Remover espaçamento superior da página principal */
+    /* Compactar espaços verticais gerais da página principal */
     .block-container {
-        padding-top: 1.2rem !important;
-        padding-bottom: 2rem !important;
+        padding-top: 1.0rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+    h1 {
+        margin-bottom: 0.2rem !important;
     }
     
     /* Padronizar botões gerais */
@@ -471,11 +474,12 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
+    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
     # ==========================================
-    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
+    st.markdown("<br>", unsafe_allow_html=True)
+    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
     with col_lbl_dist:
-        st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-top: 8px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
     with col_input_email:
         def atualizar_emails_callback():
             novo_valor = st.session_state.input_emails_state
