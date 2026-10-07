@@ -20,10 +20,10 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para máxima compactação e botões compactos na linha do chefe
+# Estilização CSS para máxima compactação e organização da barra lateral
 st.markdown("""
 <style>
-    /* Compactar e puxar elementos estritamente para cima na barra lateral */
+    /* Puxar elementos para cima na barra lateral */
     [data-testid="stSidebar"] {
         min-width: 400px !important;
         max-width: 440px !important;
@@ -36,7 +36,7 @@ st.markdown("""
         padding-bottom: 1rem !important;
     }
     [data-testid="stSidebar"] .element-container {
-        margin-bottom: -0.6rem !important;
+        margin-bottom: -0.5rem !important;
     }
     
     /* Compactar espaços verticais gerais da página principal */
@@ -51,14 +51,6 @@ st.markdown("""
     /* Padronizar botões gerais */
     div[data-testid="stButton"] button {
         font-weight: bold;
-    }
-
-    /* Ajuste milimétrico para o botão compacto de cadastro ao lado do Chefe de Turno */
-    div[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0px 8px !important;
-        margin-top: 26px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -244,46 +236,46 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno (reduzido em 40%) com o emoji de gerenciamento (➕ / ⚙️) ao lado
-    col_chefe_sel, col_btn_gestao = st.sidebar.columns([3.3, 0.7])
+    # Linha 3: Chefe de Turno (reduzido em 40%) com o emoji de cadastro/gestão (➕) ao lado
+    col_chefe_sel, col_btn_plus = st.sidebar.columns([3.2, 0.8])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
-    with col_btn_gestao:
-        if st.sidebar.button("⚙️", key="btn_gestao_chefe", help="Gerenciar Cadastro / Exclusão de Chefes"):
+    with col_btn_plus:
+        st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
+        if st.sidebar.button("➕", key="btn_cad_chefe", help="Cadastrar / Gerenciar Chefes"):
             st.session_state['mostrar_gestao_chefe'] = not st.session_state.get('mostrar_gestao_chefe', False)
 
     # Painel retrátil de Gestão de Chefes (Cadastro e Exclusão)
     if st.session_state.get('mostrar_gestao_chefe', False):
         st.sidebar.markdown("---")
-        st.sidebar.markdown("#### 👥 Gestão de Chefes de Turno")
-        acao_chefe = st.sidebar.radio("Ação", options=["Cadastrar Novo", "Remover Existente"], key="radio_acao_chefe", label_visibility="collapsed")
-        
-        if acao_chefe == "Cadastrar Novo":
-            novo_matricula = st.sidebar.text_input("Matrícula")
-            novo_nome = st.sidebar.text_input("Nome Completo")
-            if st.sidebar.button("💾 Salvar Novo Chefe", key="save_chefe_btn"):
+        st.sidebar.markdown("#### 👥 Gestão de Chefes")
+        novo_matricula = st.sidebar.text_input("Matrícula")
+        novo_nome = st.sidebar.text_input("Nome Completo")
+        col_s_ch, col_r_ch = st.sidebar.columns(2)
+        with col_s_ch:
+            if st.sidebar.button("💾 Salvar", key="save_chefe_btn", use_container_width=True):
                 if novo_matricula and novo_nome:
                     novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
                     if novo_chefe_str not in st.session_state.lista_chefes:
                         st.session_state.lista_chefes.append(novo_chefe_str)
                         salvar_chefe_nuvem(novo_chefe_str)
-                        st.sidebar.success("Chefe cadastrado com sucesso!")
+                        st.sidebar.success("Salvo com sucesso!")
                         st.rerun()
                     else:
-                        st.sidebar.warning("Este chefe já está cadastrado.")
+                        st.sidebar.warning("Já cadastrado.")
                 else:
-                    st.sidebar.error("Preencha matrícula e nome.")
-        else:
-            chefe_a_remover = st.sidebar.selectbox("Selecionar chefe", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean")
-            if st.sidebar.button("⚠️ Confirmar Exclusão", key="conf_rem_chefe_btn"):
+                    st.sidebar.error("Preencha os campos.")
+        with col_r_ch:
+            chefe_a_remover = st.sidebar.selectbox("Remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean", label_visibility="collapsed")
+            if st.sidebar.button("🗑️ Excluir", key="conf_rem_chefe_btn", use_container_width=True):
                 chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
                 if chefe_a_remover in chefes_base_original:
-                    st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
+                    st.sidebar.warning("Impossível remover chefe da base oficial.")
                 else:
                     if chefe_a_remover in st.session_state.lista_chefes:
                         st.session_state.lista_chefes.remove(chefe_a_remover)
                         remover_chefe_nuvem(chefe_a_remover)
-                        st.sidebar.success("Chefe removido com sucesso!")
+                        st.sidebar.success("Removido!")
                         st.rerun()
         st.sidebar.markdown("---")
 
@@ -551,151 +543,3 @@ try:
     # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
-    with col_lbl_dist:
-        st.markdown("<div style='padding-top: 6px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
-    with col_input_email:
-        def atualizar_emails_callback():
-            novo_valor = st.session_state.input_emails_state
-            salvar_emails_nuvem(novo_valor)
-            st.session_state.emails_distribuicao = novo_valor
-
-        lista_emails = st.text_input(
-            "Destinatários", 
-            value=st.session_state.emails_distribuicao, 
-            key="input_emails_state",
-            on_change=atualizar_emails_callback,
-            label_visibility="collapsed"
-        )
-    with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
-
-    if btn_enviar_outlook:
-        salvar_emails_nuvem(lista_emails)
-        st.session_state.emails_distribuicao = lista_emails
-        
-        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
-        corpo = f"""Prezados(as),
-
-Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
-
-Atenciosamente,"""
-        
-        assunto_encoded = urllib.parse.quote(assunto)
-        corpo_encoded = urllib.parse.quote(corpo)
-        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
-        
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
-        ("ADM", "🏢 Turno ADM"),
-        ("NOTURNO", "🌙 Turno Noturno")
-    ]
-
-    for codigo_turno, titulo_turno in turnos_secoes:
-        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
-        
-        if codigo_turno == "ADM":
-            turma_info = turma_adm
-            chefe_info = chefe_adm
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
-        elif codigo_turno == "DIURNO":
-            turma_info = turma_diurno
-            chefe_info = chefe_diurno
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
-        else:
-            if not df_turno_atual.empty:
-                ultima_linha = df_turno_atual.iloc[-1]
-                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
-                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
-                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
-            else:
-                turma_info = "AMARELA"
-                chefe_info = chefe_diurno
-                data_info = data_selecionada_filtro
-            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
-
-        selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
-        
-        col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
-        with col_titulo_bloco:
-            html_cabecalho = f"""
-            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
-                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                <span style="color: #d0d0d0; font-size: 14px;">
-                    <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                </span>
-            </div>
-            """
-            st.markdown(html_cabecalho, unsafe_allow_html=True)
-        
-        with col_botao_excluir:
-            if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
-            else:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                    
-                    if linhas_selecionadas:
-                        uids_a_remover = []
-                        for idx_sel in linhas_selecionadas:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            
-                            if selecao_key in st.session_state:
-                                del st.session_state[selecao_key]
-                            st.session_state[selecao_key] = {"selection": {"rows": []}}
-                                
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("Selecione pelo menos uma linha na tabela.")
-
-        if not df_turno_atual.empty:
-            df_exibicao = df_turno_atual.copy()
-            if 'UID' not in df_exibicao.columns:
-                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
-                
-            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
-            
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade']
-            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
-            
-            st.dataframe(
-                df_final_exibir,
-                use_container_width=True,
-                hide_index=True,
-                selection_mode="disabled" if modo_leitura else "multi-row",
-                on_select="rerun",
-                column_config={
-                    "Nº": st.column_config.NumberColumn("Nº", width="auto"),
-                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", width="auto"),
-                    "Hora Inicial": st.column_config.TextColumn("Hora Inicial", width="auto"),
-                    "Hora Final": st.column_config.TextColumn("Hora Final", width="auto"),
-                    "Ativo": st.column_config.TextColumn("Ativo", width="auto"),
-                    "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="auto"),
-                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="auto"),
-                    "UID": None
-                },
-                key=selecao_key
-            )
-        else:
-            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"Erro ao carregar o sistema: {e}")
