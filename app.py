@@ -97,7 +97,9 @@ def carregar_plano_nuvem():
             if 'UID' not in df_persisted.columns:
                 df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
             
-            if 'Observação' not in df_persisted.columns:
+            if 'Observação' in df_persisted.columns:
+                df_persisted['Observação'] = df_persisted['Observação'].fillna("").astype(str)
+            else:
                 df_persisted['Observação'] = ""
                 
             if 'Ativo' in df_persisted.columns:
@@ -141,6 +143,8 @@ def carregar_plano_nuvem():
 def salvar_plano_nuvem(lista_registros):
     try:
         df_to_save = pd.DataFrame(lista_registros)
+        if 'Observação' in df_to_save.columns:
+            df_to_save['Observação'] = df_to_save['Observação'].fillna("").astype(str)
         df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding='utf-8')
     except Exception:
         pass
@@ -366,7 +370,7 @@ try:
             "Ativo": ativo_extraido,
             "Retirada NR12": "NÃO",
             "Dados da Atividade": descricao_atividade,
-            "Observação": observacao_form
+            "Observação": str(observacao_form) if observacao_form else ""
         }
         st.session_state.plano_operacional.append(novo_registro)
         salvar_plano_nuvem(st.session_state.plano_operacional)
@@ -382,8 +386,11 @@ try:
         df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
         )
-    if not df_plano_atual.empty and 'Observação' not in df_plano_atual.columns:
-        df_plano_atual['Observação'] = ""
+    if not df_plano_atual.empty:
+        if 'Observação' not in df_plano_atual.columns:
+            df_plano_atual['Observação'] = ""
+        else:
+            df_plano_atual['Observação'] = df_plano_atual['Observação'].fillna("").astype(str)
 
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
     with col_tit_grade:
@@ -674,6 +681,8 @@ Atenciosamente,"""
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
             if 'Observação' not in df_exibicao.columns:
                 df_exibicao['Observação'] = ""
+            else:
+                df_exibicao['Observação'] = df_exibicao['Observação'].fillna("").astype(str)
                 
             df_exibicao.insert(0, 'Selecionar', False)
             df_exibicao.insert(1, 'Nº', range(1, len(df_exibicao) + 1))
@@ -705,10 +714,10 @@ Atenciosamente,"""
                 changed = False
                 for _, row in edited_df.iterrows():
                     uid_val = row.get('UID')
-                    obs_val = row.get('Observação', '')
+                    obs_val = str(row.get('Observação', ''))
                     for reg in st.session_state.plano_operacional:
                         if str(reg.get('UID')) == str(uid_val):
-                            if reg.get('Observação', '') != obs_val:
+                            if str(reg.get('Observação', '')) != obs_val:
                                 reg['Observação'] = obs_val
                                 changed = True
                 if changed:
@@ -719,7 +728,7 @@ Atenciosamente,"""
         else:
             linhas_selecionadas_idx = []
 
-        # Botões de ação (Alterar Horário e Excluir) colocados logo ABAIXO da tabela para correta leitura do estado
+        # Botões de ação (Alterar Horário e Excluir) colocados logo ABAIXO da tabela
         col_vazio_btns, col_btn_alt, col_botao_excluir = st.columns([5.5, 1.25, 1.25])
         with col_btn_alt:
             if modo_leitura:
@@ -744,23 +753,3 @@ Atenciosamente,"""
                     if linhas_selecionadas_idx:
                         uids_a_remover = []
                         for idx_sel in linhas_selecionadas_idx:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("Selecione pelo menos uma linha na tabela.")
-
-        if df_turno_atual.empty:
-            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"Erro ao carregar o sistema: {e}")
