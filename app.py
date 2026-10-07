@@ -231,14 +231,58 @@ try:
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
+    # ÁREA PRINCIPAL: CONSULTA DE DATA (UNIFICADA)
+    # ==========================================
+    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
+    with col_tit_grade:
+        st.markdown("### 📋 Grade de Planejamento Diário")
+    with col_filtro_grade:
+        data_pesquisa_obj = st.date_input("🔍 Consultar Plano por Data", value=datetime.now().date(), label_visibility="collapsed", key="data_consultar_principal")
+        data_selecionada_filtro = data_pesquisa_obj.strftime('%d/%m/%Y')
+
+    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+    if not df_plano_atual.empty and 'Ativo' in df_plano_atual.columns:
+        df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
+            lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+        )
+    if not df_plano_atual.empty:
+        if 'Observação' not in df_plano_atual.columns:
+            df_plano_atual['Observação'] = ""
+        else:
+            df_plano_atual['Observação'] = df_plano_atual['Observação'].fillna("").astype(str)
+
+    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+
+    data_hoje_str = datetime.now().strftime('%d/%m/%Y')
+    modo_leitura = (data_selecionada_filtro != data_hoje_str)
+
+    if modo_leitura:
+        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registos de datas anteriores ficam em consulta protegida.")
+
+    # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
+    col_dt_final = None
+    if not df_os.empty:
+        for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
+            if c_cand in df_os.columns:
+                col_dt_final = c_cand
+                break
+
+    if col_dt_final and not df_os.empty:
+        df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
+        if not df_os_filtrado.empty:
+            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
+                st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
+
+    # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    # Linha 1: Data, Hora Inicial e Hora Final alinhados lado a lado
-    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.0, 1.0])
-    with col_d:
-        data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
+    # A data do planejamento acompanha a data selecionada na consulta principal
+    data_stamp = data_pesquisa_obj
+
+    # Linha 1: Hora Inicial e Hora Final alinhados lado a lado
+    col_h1, col_h2 = st.sidebar.columns([1.0, 1.0])
     with col_h1:
         hora_ini_form = st.sidebar.selectbox("Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini")
     with col_h2:
@@ -315,7 +359,6 @@ try:
 
     st.sidebar.markdown("---")
     
-    # Campo reativo para atualizar o aviso textual instantaneamente
     opcao_selecionada = st.sidebar.selectbox(
         "Selecione o COD. ATIVIDADE", 
         options=lista_opcoes_atividades,
@@ -330,7 +373,6 @@ try:
         cod_atividade_escolhido = opcao_selecionada
         descricao_atividade = "Atividade Operacional Registrada"
 
-    # Campo Observação logo abaixo do aviso textual
     observacao_form = st.sidebar.text_input("Observação", key="obs_form_main")
 
     ativo_extraido = "GERAL"
@@ -353,7 +395,6 @@ try:
         partes = cod_atividade_escolhido.split('.')
         ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
 
-    # Aviso textual atualizado instantaneamente em tempo real
     st.sidebar.info(f"{descricao_atividade}")
 
     if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
@@ -362,7 +403,7 @@ try:
             "UID": novo_uid,
             "TURMA": turma_form,
             "CHEFE DE TURNO": chefe_form,
-            "TURNO": turno_form,
+            "TURNO": turno_form,  # Salva rigorosamente o turno selecionado (DIURNO, ADM ou NOTURNO)
             "DATA": data_stamp.strftime('%d/%m/%Y'),
             "Cód. Atividade": cod_atividade_escolhido,
             "Hora Inicial": hora_ini_form,
@@ -374,85 +415,15 @@ try:
         }
         st.session_state.plano_operacional.append(novo_registro)
         salvar_plano_nuvem(st.session_state.plano_operacional)
-        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
+        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form} para o dia {data_stamp.strftime('%d/%m/%Y')}!")
         st.rerun()
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO PROPORCIONAL E BOTÃO DE IMPRESSÃO
-    # ==========================================
-    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
-    
-    if not df_plano_atual.empty and 'Ativo' in df_plano_atual.columns:
-        df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
-            lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
-        )
-    if not df_plano_atual.empty:
-        if 'Observação' not in df_plano_atual.columns:
-            df_plano_atual['Observação'] = ""
-        else:
-            df_plano_atual['Observação'] = df_plano_atual['Observação'].fillna("").astype(str)
-
-    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
-    with col_tit_grade:
-        st.markdown("### 📋 Grade de Planejamento Diário")
-    with col_filtro_grade:
-        data_pesquisa_obj = st.date_input("🔍 Consultar Plano por Data", value=datetime.now().date(), label_visibility="collapsed")
-        data_selecionada_filtro = data_pesquisa_obj.strftime('%d/%m/%Y')
-
-    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
-
-    data_hoje_str = datetime.now().strftime('%d/%m/%Y')
-    modo_leitura = (data_selecionada_filtro != data_hoje_str)
-
-    if modo_leitura:
-        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registos de datas anteriores ficam em consulta protegida.")
-
-    # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
-    col_dt_final = None
-    if not df_os.empty:
-        for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
-            if c_cand in df_os.columns:
-                col_dt_final = c_cand
-                break
-
-    if col_dt_final and not df_os.empty:
-        df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
-        if not df_os_filtrado.empty:
-            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
-                st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
-
-    # Extrair metadados específicos para cada Turno individualmente
-    df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_diurno_ref.empty:
-        turma_diurno = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_diurno = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-    else:
-        turma_diurno = "AMARELA"
-        chefe_diurno = "20000000 - GERSON FUENTES"
-
-    df_adm_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "ADM"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_adm_ref.empty:
-        turma_adm = str(df_adm_ref.iloc[-1].get('TURMA', 'ADM')).strip().upper()
-        chefe_adm = str(df_adm_ref.iloc[-1].get('CHEFE_TURNO', df_adm_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-    else:
-        turma_adm = "ADM"
-        chefe_adm = "20000000 - GERSON FUENTES"
-
-    df_noturno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "NOTURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_noturno_ref.empty:
-        turma_noturno = str(df_noturno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_noturno = str(df_noturno_ref.iloc[-1].get('CHEFE_TURNO', df_noturno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-    else:
-        turma_noturno = "AMARELA"
-        chefe_noturno = "20000000 - GERSON FUENTES"
-
-    data_comum = data_selecionada_filtro
-
-    # ==========================================
-    # FUNÇÃO HTML DE IMPRESSÃO (PAISAGEM COM CONTROLE DE ADM E VERSO NOTURNO)
+    # FUNÇÃO HTML DE IMPRESSÃO (PAISAGEM)
     # ==========================================
     def gerar_html_paisagem(df_dados, data_plano):
-        tem_adm = not df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == "ADM"].empty
+        df_d_p = df_dados[df_dados['DATA'] == data_plano]
+        tem_adm = not df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == "ADM"].empty
 
         html = f"""<!DOCTYPE html>
 <html>
@@ -490,20 +461,21 @@ try:
         <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
     </div>"""
         
-        if df_dados.empty:
+        if df_d_p.empty:
             html += "<p>Nenhuma atividade registada para esta data.</p>"
         else:
             turnos_html = [
-                ("DIURNO", "Turno Diurno", turma_diurno, chefe_diurno),
-                ("ADM", "Turno ADM", turma_adm, chefe_adm),
-                ("NOTURNO", "Turno Noturno", turma_noturno, chefe_noturno)
+                ("DIURNO", "Turno Diurno"),
+                ("ADM", "Turno ADM"),
+                ("NOTURNO", "Turno Noturno")
             ]
             
-            primeiro_bloco = True
-            for codigo_turno, titulo_turno, t_info, c_info in turnos_html:
-                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
-                
+            for codigo_turno, titulo_turno in turnos_html:
+                df_t = df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
                 if not df_t.empty:
+                    t_info = str(df_t.iloc[-1].get('TURMA', 'N/D')).strip().upper()
+                    c_info = str(df_t.iloc[-1].get('CHEFE DE TURNO', 'N/D'))
+
                     if codigo_turno == "NOTURNO" and tem_adm:
                         html += '<div class="page-break"></div>'
 
@@ -524,7 +496,6 @@ try:
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Observação', '')}</td></tr>"
                     html += "</tbody></table></div>"
-                    primeiro_bloco = False
                     
         html += """
             <script>
@@ -542,7 +513,7 @@ try:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
             nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
             
-            html_para_download = gerar_html_paisagem(df_filtrado_data, data_selecionada_filtro)
+            html_para_download = gerar_html_paisagem(df_plano_atual, data_selecionada_filtro)
             b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
             
             st.markdown(
@@ -573,7 +544,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
+    # LISTA DE DISTRIBUIÇÃO E ENVIO
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
     with col_lbl_dist:
@@ -630,7 +601,6 @@ Atenciosamente,"""
                     break
             salvar_plano_nuvem(st.session_state.plano_operacional)
             
-            # Limpar seleção após gravar
             if sel_key in st.session_state:
                 del st.session_state[sel_key]
                 
@@ -647,26 +617,82 @@ Atenciosamente,"""
         df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
         
         if codigo_turno == "ADM":
-            turma_info = turma_adm
-            chefe_info = chefe_adm
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
+            turma_info = str(df_adm_ref.iloc[-1].get('TURMA', 'ADM')).strip().upper() if not df_adm_ref.empty else "ADM"
+            chefe_info = str(df_adm_ref.iloc[-1].get('CHEFE DE TURNO', '20000000 - GERSON FUENTES')) if not df_adm_ref.empty else "20000000 - GERSON FUENTES"
+            cor_destaque = mapa_cores.get(turma_info, "#A9A9A9")
         elif codigo_turno == "DIURNO":
             turma_info = turma_diurno
             chefe_info = chefe_diurno
-            data_info = data_comum
             cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
         else:
             turma_info = turma_noturno
             chefe_info = chefe_noturno
-            data_info = data_comum
             cor_destaque = mapa_cores.get(turma_noturno, "#1E90FF")
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
-        # Primeiro renderizamos a tabela editável para que o estado do editor seja atualizado antes dos botões no cabeçalho
-        linhas_selecionadas_idx = []
-        
+        # Obter lista de números de ordens (Nº) para seleção instantânea e determinística nos botões do topo direito
+        numeros_disponiveis = list(range(1, len(df_turno_atual) + 1)) if not df_turno_atual.empty else []
+
+        # Cabeçalho do Bloco + Seletor de Nº + Botões no Canto Superior Direito
+        col_titulo_bloco, col_sel_num, col_btn_alt, col_botao_excluir = st.columns([3.5, 1.8, 1.35, 1.35])
+        with col_titulo_bloco:
+            html_cabecalho = f"""
+            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                <span style="color: #d0d0d0; font-size: 14px;">
+                    <span style="color: {cor_destaque};">👥</span> <b>Equipa:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_selecionada_filtro}</span>
+                </span>
+            </div>
+            """
+            st.markdown(html_cabecalho, unsafe_allow_html=True)
+            
+        with col_sel_num:
+            num_selecionado = st.selectbox(
+                "Selecionar Nº", 
+                options=numeros_disponiveis, 
+                key=f"sel_num_{codigo_turno}_{data_selecionada_filtro}",
+                label_visibility="collapsed",
+                placeholder="Nº da Atividade..."
+            )
+
+        with col_btn_alt:
+            if modo_leitura:
+                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
+            else:
+                if st.button("🕒 Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da atividade selecionada"):
+                    if not numeros_disponiveis or num_selecionado is None:
+                        st.warning("⚠️ Selecione um Nº.")
+                    else:
+                        idx_l = int(num_selecionado) - 1
+                        if 0 <= idx_l < len(df_turno_atual):
+                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            modal_alterar_horario(uid_alvo, titulo_turno, selecao_key)
+
+        with col_botao_excluir:
+            if modo_leitura:
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores estão protegidos.")
+            else:
+                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True, help="Excluir a atividade selecionada"):
+                    if not numeros_disponiveis or num_selecionado is None:
+                        st.warning("⚠️ Selecione um Nº.")
+                    else:
+                        idx_l = int(num_selecionado) - 1
+                        if 0 <= idx_l < len(df_turno_atual):
+                            uid_item = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            if uid_item:
+                                st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) != uid_item]
+                                salvar_plano_nuvem(st.session_state.plano_operacional)
+                                
+                                if selecao_key in st.session_state:
+                                    del st.session_state[selecao_key]
+                                    
+                                st.success("Atividade excluída com sucesso!")
+                                st.rerun()
+
+        # Tabela editável logo abaixo do cabeçalho
         if not df_turno_atual.empty:
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
@@ -676,10 +702,9 @@ Atenciosamente,"""
             else:
                 df_exibicao['Observação'] = df_exibicao['Observação'].fillna("").astype(str)
                 
-            df_exibicao.insert(0, 'Selecionar', False)
-            df_exibicao.insert(1, 'Nº', range(1, len(df_exibicao) + 1))
+            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            colunas_exibir = ['Selecionar', 'Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Observação']
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Observação']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
             edited_df = st.data_editor(
@@ -687,7 +712,6 @@ Atenciosamente,"""
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "Selecionar": st.column_config.CheckboxColumn("Sel.", width="small", default=False),
                     "Nº": st.column_config.NumberColumn("Nº", width="small", disabled=True),
                     "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", width="medium", disabled=True),
                     "Hora Inicial": st.column_config.TextColumn("Hora Ini.", width="small", disabled=True),
@@ -714,65 +738,7 @@ Atenciosamente,"""
                                 changed = True
                 if changed:
                     salvar_plano_nuvem(st.session_state.plano_operacional)
-            
-            linhas_selecionadas_idx = edited_df.index[edited_df['Selecionar'] == True].tolist()
-
-        # Cabeçalho do Bloco com os botões "Alterar o Horário" e "Excluir Linha" no canto superior direito
-        col_titulo_bloco, col_btn_alt, col_botao_excluir = st.columns([4.5, 1.25, 1.25])
-        with col_titulo_bloco:
-            html_cabecalho = f"""
-            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
-                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                <span style="color: #d0d0d0; font-size: 14px;">
-                    <span style="color: {cor_destaque};">👥</span> <b>Equipa:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                </span>
-            </div>
-            """
-            st.markdown(html_cabecalho, unsafe_allow_html=True)
-        
-        with col_btn_alt:
-            if modo_leitura:
-                st.button("🕒 Alterar o Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
-            else:
-                if st.button("🕒 Alterar o Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
-                    if not linhas_selecionadas_idx:
-                        st.warning("⚠️ Selecione pelo menos uma linha na tabela.")
-                    elif len(linhas_selecionadas_idx) > 1:
-                        st.warning("⚠️ Selecione apenas uma linha para alterar o horário.")
-                    else:
-                        idx_l = linhas_selecionadas_idx[0]
-                        if idx_l < len(df_turno_atual):
-                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
-                            modal_alterar_horario(uid_alvo, titulo_turno, selecao_key)
-
-        with col_botao_excluir:
-            if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores estão protegidos.")
-            else:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True, help="Excluir linhas selecionadas"):
-                    if linhas_selecionadas_idx:
-                        uids_a_remover = []
-                        for idx_sel in linhas_selecionadas_idx:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            
-                            if selecao_key in st.session_state:
-                                del st.session_state[selecao_key]
-                                
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("⚠️ Selecione pelo menos uma linha na tabela.")
-
-        if df_turno_atual.empty:
+        else:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
