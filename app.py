@@ -236,7 +236,7 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno com o emoji de cadastro/gestão (➕) ao lado
+    # Linha 3: Chefe de Turno (reduzido) com o emoji de cadastro/gestão (➕) ao lado
     col_chefe_sel, col_btn_plus = st.sidebar.columns([3.2, 0.8])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
@@ -415,16 +415,228 @@ try:
 
     # Função HTML de Impressão com os metadados corretos por turno
     def gerar_html_retrato(df_dados, data_plano):
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Plano de Limpeza Operacional - {data_plano}</title>
-            <style>
-                @page {{ size: portrait; margin: 8mm; }}
-                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }}
-                .header {{ border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }}
-                .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
-                .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
-                .bloco-container {{ margin-top: 15px; page-break-inside: avoid;
+        html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Plano de Limpeza Operacional - """ + data_plano + """</title>
+    <style>
+        @page { size: portrait; margin: 8mm; }
+        body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }
+        .header { border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }
+        .header h1 { margin: 0; font-size: 18px; color: #003366; }
+        .header p { margin: 3px 0 0 0; color: #475569; font-size: 11px; }
+        .bloco-container { margin-top: 15px; page-break-inside: avoid; }
+        .bloco-titulo { 
+            background-color: #f1f5f9; 
+            padding: 6px 10px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            color: #003366; 
+            border-left: 4px solid #003366; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }
+        th { background-color: #003366; color: white; padding: 5px; text-align: left; }
+        td { padding: 4px; border: 1px solid #cbd5e1; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
+        <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> """ + data_plano + """</p>
+    </div>"""
+        
+        if df_dados.empty:
+            html += "<p>Nenhuma atividade registada para esta data.</p>"
+        else:
+            turnos_html = [
+                ("DIURNO", "Turno Diurno"),
+                ("ADM", "Turno ADM"),
+                ("NOTURNO", "Turno Noturno")
+            ]
+            for codigo_turno, titulo_turno in turnos_html:
+                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
+                
+                if codigo_turno == "ADM":
+                    t_info = turma_adm
+                    c_info = chefe_adm
+                elif codigo_turno == "DIURNO":
+                    t_info = turma_diurno
+                    c_info = chefe_diurno
+                else:
+                    t_info = "N/D"
+                    c_info = "N/D"
+                d_info = data_plano
+
+                if not df_t.empty:
+                    html += f"""
+                    <div class="bloco-container">
+                        <div class="bloco-titulo">
+                            <span>{titulo_turno}</span>
+                            <span style="font-size: 10px; font-weight: normal; color: #334155;">
+                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
+                            </span>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
+                            </thead>
+                            <tbody>
+                    """
+                    for idx, (_, row) in enumerate(df_t.iterrows(), 1):
+                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
+                    html += "</tbody></table></div>"
+                    
+        html += """
+            <script>
+                window.onload = function() { 
+                    window.print(); 
+                }
+            </script>
+        </body>
+        </html>
+        """
+        return html
+
+    with col_down_grade:
+        if not df_filtrado_data.empty:
+            timestamp_str = datetime.now().strftime("%d%m%H%M")
+            nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
+            
+            html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
+            b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
+            
+            st.markdown(
+                f"""
+                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
+                    <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                        🖨️ Imprimir
+                    </button>
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
+
+    st.markdown("""
+    <style>
+        button[kind="primary"] {
+            background-color: #003366 !important;
+            border-color: #003366 !important;
+            color: white !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #002244 !important;
+            border-color: #002244 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ==========================================
+    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
+    # ==========================================
+    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
+    with col_lbl_dist:
+        st.markdown("<div style='padding-top: 6px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
+    with col_input_email:
+        def atualizar_emails_callback():
+            novo_valor = st.session_state.input_emails_state
+            salvar_emails_nuvem(novo_valor)
+            st.session_state.emails_distribuicao = novo_valor
+
+        lista_emails = st.text_input(
+            "Destinatários", 
+            value=st.session_state.emails_distribuicao, 
+            key="input_emails_state",
+            on_change=atualizar_emails_callback,
+            label_visibility="collapsed"
+        )
+    with col_btn_email:
+        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+
+    if btn_enviar_outlook:
+        salvar_emails_nuvem(lista_emails)
+        st.session_state.emails_distribuicao = lista_emails
+        
+        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        corpo = f"""Prezados(as),
+
+Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
+
+Atenciosamente,"""
+        
+        assunto_encoded = urllib.parse.quote(assunto)
+        corpo_encoded = urllib.parse.quote(corpo)
+        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
+        
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    turnos_secoes = [
+        ("DIURNO", "☀️ Turno Diurno"),
+        ("ADM", "🏢 Turno ADM"),
+        ("NOTURNO", "🌙 Turno Noturno")
+    ]
+
+    for codigo_turno, titulo_turno in turnos_secoes:
+        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
+        
+        if codigo_turno == "ADM":
+            turma_info = turma_adm
+            chefe_info = chefe_adm
+            data_info = data_comum
+            cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
+        elif codigo_turno == "DIURNO":
+            turma_info = turma_diurno
+            chefe_info = chefe_diurno
+            data_info = data_comum
+            cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
+        else:
+            if not df_turno_atual.empty:
+                ultima_linha = df_turno_atual.iloc[-1]
+                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
+                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
+                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
+            else:
+                turma_info = "AMARELA"
+                chefe_info = chefe_diurno
+                data_info = data_selecionada_filtro
+            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
+
+        selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+        
+        col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
+        with col_titulo_bloco:
+            html_cabecalho = f"""
+            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+                <span style="color: #d0d0d0; font-size: 14px;">
+                    <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+                </span>
+            </div>
+            """
+            st.markdown(html_cabecalho, unsafe_allow_html=True)
+        
+        with col_botao_excluir:
+            if modo_leitura:
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
+            else:
+                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                    estado_grid = st.session_state.get(selecao_key, {})
+                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+                    
+                    if linhas_selecionadas:
+                        uids_a_remover = []
+                        for idx_sel in linhas_selecionadas:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
