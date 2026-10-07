@@ -270,8 +270,13 @@ try:
 
     data_comum = data_selecionada_filtro
 
-    # Função HTML de Impressão com os metadados corretos por turno
-    def gerar_html_retrato(df_dados, data_plano):
+    # ==========================================
+    # FUNÇÃO HTML DE IMPRESSÃO (LAYOUT LANDSCAPE / PAISAGEM)
+    # ==========================================
+    def gerar_html_paisagem(df_dados, data_plano):
+        df_d_p = df_dados[df_dados['DATA'] == data_plano]
+        tem_adm = not df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == "ADM"].empty
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -279,16 +284,17 @@ try:
             <meta charset="utf-8">
             <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
-                @page {{ size: portrait; margin: 8mm; }}
-                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }}
-                .header {{ border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }}
-                .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
-                .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
-                .bloco-container {{ margin-top: 15px; page-break-inside: avoid; }}
+                @page {{ size: landscape; margin: 6mm; }}
+                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 5px; }}
+                .header {{ border-bottom: 2px solid #003366; padding-bottom: 4mm; margin-bottom: 10px; }}
+                .header h1 {{ margin: 0; font-size: 16px; color: #003366; }}
+                .header p {{ margin: 2px 0 0 0; color: #475569; font-size: 10px; }}
+                .bloco-container {{ margin-top: 10px; page-break-inside: avoid; }}
+                .page-break {{ page-break-before: always; }}
                 .bloco-titulo {{ 
                     background-color: #f1f5f9; 
-                    padding: 6px 10px; 
-                    font-size: 12px; 
+                    padding: 5px 8px; 
+                    font-size: 11px; 
                     font-weight: bold; 
                     color: #003366; 
                     border-left: 4px solid #003366; 
@@ -296,9 +302,9 @@ try:
                     justify-content: space-between;
                     align-items: center;
                 }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }}
-                th {{ background-color: #003366; color: white; padding: 5px; text-align: left; }}
-                td {{ padding: 4px; border: 1px solid #cbd5e1; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 9px; }}
+                th {{ background-color: #003366; color: white; padding: 4px; text-align: left; }}
+                td {{ padding: 3px; border: 1px solid #cbd5e1; }}
                 tr:nth-child(even) {{ background-color: #f8fafc; }}
             </style>
         </head>
@@ -309,7 +315,7 @@ try:
             </div>
         """
         
-        if df_dados.empty:
+        if df_d_p.empty:
             html += "<p>Nenhuma atividade registada para esta data.</p>"
         else:
             turnos_html = [
@@ -318,7 +324,7 @@ try:
                 ("NOTURNO", "Turno Noturno")
             ]
             for codigo_turno, titulo_turno in turnos_html:
-                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
+                df_t = df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
                 
                 if codigo_turno == "ADM":
                     t_info = turma_adm
@@ -332,6 +338,10 @@ try:
                 d_info = data_plano
 
                 if not df_t.empty:
+                    # Se houver ADM e formos imprimir o NOTURNO, aplica quebra de página para o verso
+                    if codigo_turno == "NOTURNO" and tem_adm:
+                        html += '<div class="page-break"></div>'
+
                     html += f"""
                     <div class="bloco-container">
                         <div class="bloco-titulo">
@@ -366,7 +376,7 @@ try:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
             nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
             
-            html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
+            html_para_download = gerar_html_paisagem(df_plano_atual, data_selecionada_filtro)
             b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
             
             st.markdown(
@@ -395,6 +405,47 @@ try:
         }
     </style>
     """, unsafe_allow_html=True)
+
+    # ==========================================
+    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
+    # ==========================================
+    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
+    with col_lbl_dist:
+        st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
+    with col_input_email:
+        def atualizar_emails_callback():
+            novo_valor = st.session_state.input_emails_state
+            salvar_emails_nuvem(novo_valor)
+            st.session_state.emails_distribuicao = novo_valor
+
+        lista_emails = st.text_input(
+            "Destinatários", 
+            value=st.session_state.emails_distribuicao, 
+            key="input_emails_state",
+            on_change=atualizar_emails_callback,
+            label_visibility="collapsed"
+        )
+    with col_btn_email:
+        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+
+    if btn_enviar_outlook:
+        salvar_emails_nuvem(lista_emails)
+        st.session_state.emails_distribuicao = lista_emails
+        
+        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
+        corpo = f"""Prezados(as),
+
+Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
+
+Atenciosamente,"""
+        
+        assunto_encoded = urllib.parse.quote(assunto)
+        corpo_encoded = urllib.parse.quote(corpo)
+        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
+        
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
+
+    st.markdown("---")
 
     # ==========================================
     # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO
@@ -530,47 +581,8 @@ try:
         }
         st.session_state.plano_operacional.append(novo_registro)
         salvar_plano_nuvem(st.session_state.plano_operacional)
-        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form} para o dia {data_stamp.strftime('%d/%m/%Y')}!")
+        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
         st.rerun()
-
-    # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
-    # ==========================================
-    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
-    with col_lbl_dist:
-        st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
-    with col_input_email:
-        def atualizar_emails_callback():
-            novo_valor = st.session_state.input_emails_state
-            salvar_emails_nuvem(novo_valor)
-            st.session_state.emails_distribuicao = novo_valor
-
-        lista_emails = st.text_input(
-            "Destinatários", 
-            value=st.session_state.emails_distribuicao, 
-            key="input_emails_state",
-            on_change=atualizar_emails_callback,
-            label_visibility="collapsed"
-        )
-    with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
-
-    if btn_enviar_outlook:
-        salvar_emails_nuvem(lista_emails)
-        st.session_state.emails_distribuicao = lista_emails
-        
-        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
-        corpo = f"""Prezados(as),
-
-Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
-
-Atenciosamente,"""
-        
-        assunto_encoded = urllib.parse.quote(assunto)
-        corpo_encoded = urllib.parse.quote(corpo)
-        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
-        
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -618,14 +630,19 @@ Atenciosamente,"""
             data_info = data_comum
             cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
         else:
-            turma_info = turma_noturno
-            chefe_info = chefe_noturno
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_noturno, "#1E90FF")
+            if not df_turno_atual.empty:
+                ultima_linha = df_turno_atual.iloc[-1]
+                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
+                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
+                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
+            else:
+                turma_info = "AMARELA"
+                chefe_info = chefe_diurno
+                data_info = data_selecionada_filtro
+            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
-        # Cabeçalho com o título, botão "Alterar Horário" e botão "Excluir Linha" lado a lado no canto superior direito
         col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = st.columns([5.0, 1.0, 1.0, 1.0])
         with col_titulo_bloco:
             html_cabecalho = f"""
@@ -660,7 +677,7 @@ Atenciosamente,"""
 
         with col_botao_excluir:
             if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos de datas anteriores estão protegidos no modo leitura.")
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
                 if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
