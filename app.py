@@ -242,7 +242,7 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno reduzido com o botão de gestão (⚙️) ao lado
+    # Linha 3: Chefe de Turno reduzido com o botão de gestão (⚙️) alinhado ao lado
     col_chefe_sel, col_btn_gear = st.sidebar.columns([2.3, 0.7])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
@@ -587,6 +587,30 @@ Atenciosamente,"""
 
     st.markdown("---")
 
+    # ==========================================
+    # MODAL DE ALTERAÇÃO DE HORÁRIO
+    # ==========================================
+    @st.dialog("🕒 Alterar Horário da Atividade")
+    def modal_alterar_horario(uid_alvo, titulo_t, df_t, sel_key):
+        st.write(f"Editando horário no **{titulo_t}**")
+        nova_h_ini = st.selectbox("Nova Hora Inicial", options=lista_horarios, key="modal_nova_hi")
+        nova_h_fim = st.selectbox("Nova Hora Final", options=lista_horarios, key="modal_nova_hf")
+        
+        if st.button("💾 Gravar Alteração", type="primary", use_container_width=True):
+            for reg in st.session_state.plano_operacional:
+                if str(reg.get('UID')) == str(uid_alvo):
+                    reg['Hora Inicial'] = nova_h_ini
+                    reg['Hora Final'] = nova_h_fim
+                    break
+            salvar_plano_nuvem(st.session_state.plano_operacional)
+            
+            # Limpa automaticamente a seleção após salvar
+            if sel_key in st.session_state:
+                st.session_state[sel_key] = {"selection": {"rows": []}}
+                
+            st.success("Horário alterado com sucesso!")
+            st.rerun()
+
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
@@ -620,7 +644,7 @@ Atenciosamente,"""
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
-        # Cabeçalho do Bloco + Botão de Excluir + Botão de Alterar Horário
+        # Cabeçalho do Bloco + Botão de Excluir + Botão de Alterar Horário Modal
         col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = st.columns([5.5, 1.0, 1.0, 1.0])
         with col_titulo_bloco:
             html_cabecalho = f"""
@@ -636,12 +660,19 @@ Atenciosamente,"""
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
         with col_btn_alt:
-            key_alt_toggle = f"btn_toggle_alt_{codigo_turno}"
             if modo_leitura:
                 st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
             else:
-                if st.button("🕒 Horário", key=key_alt_toggle, use_container_width=True, help="Alterar horário da linha selecionada"):
-                    st.session_state[f'mostrar_painel_alt_{codigo_turno}'] = not st.session_state.get(f'mostrar_painel_alt_{codigo_turno}', False)
+                if st.button("🕒 Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
+                    estado_grid = st.session_state.get(selecao_key, {})
+                    linhas_sel = estado_grid.get("selection", {}).get("rows", [])
+                    if not linhas_sel:
+                        st.warning("⚠️ Selecione uma linha na tabela.")
+                    else:
+                        idx_l = linhas_sel[0]
+                        if idx_l < len(df_turno_atual):
+                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            modal_alterar_horario(uid_alvo, titulo_turno, df_turno_atual, selecao_key)
 
         with col_botao_excluir:
             if modo_leitura:
@@ -671,41 +702,6 @@ Atenciosamente,"""
                             st.rerun()
                     else:
                         st.warning("Selecione pelo menos uma linha na tabela.")
-
-        # Painel retrátil para alteração de horário da linha selecionada
-        if st.session_state.get(f'mostrar_painel_alt_{codigo_turno}', False):
-            st.markdown(f"<div style='background-color: #1e293b; padding: 10px; border-radius: 6px; border-left: 4px solid #38bdf8; margin-bottom: 8px;'>", unsafe_allow_html=True)
-            st.markdown(f"🕒 **Alterar Horário da Atividade Selecionada ({titulo_turno})**")
-            
-            estado_grid_alt = st.session_state.get(selecao_key, {})
-            linhas_sel_alt = estado_grid_alt.get("selection", {}).get("rows", [])
-            
-            if not linhas_sel_alt:
-                st.warning("⚠️ Selecione uma linha na tabela abaixo para alterar o horário.")
-            else:
-                idx_linha = linhas_sel_alt[0]
-                if idx_linha < len(df_turno_atual):
-                    item_selecionado = df_turno_atual.iloc[idx_linha]
-                    uid_alvo = str(item_selecionado.get('UID', ''))
-                    
-                    col_nova_h1, col_nova_h2, col_btn_salv_h = st.columns([1.5, 1.5, 1.0])
-                    with col_nova_h1:
-                        nova_h_ini = st.selectbox("Nova Hora Inicial", options=lista_horarios, key=f"nova_hi_{codigo_turno}")
-                    with col_nova_h2:
-                        nova_h_fim = st.selectbox("Nova Hora Final", options=lista_horarios, key=f"nova_hf_{codigo_turno}")
-                    with col_btn_salv_h:
-                        st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
-                        if st.button("💾 Gravar", key=f"btn_salvar_h_{codigo_turno}", use_container_width=True, type="primary"):
-                            for reg in st.session_state.plano_operacional:
-                                if str(reg.get('UID')) == uid_alvo:
-                                    reg['Hora Inicial'] = nova_h_ini
-                                    reg['Hora Final'] = nova_h_fim
-                                    break
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            st.session_state[f'mostrar_painel_alt_{codigo_turno}'] = False
-                            st.success("Horário alterado com sucesso!")
-                            st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
 
         if not df_turno_atual.empty:
             df_exibicao = df_turno_atual.copy()
