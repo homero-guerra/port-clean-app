@@ -20,7 +20,7 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para máxima compactação vertical e visibilidade total da barra lateral
+# Estilização CSS para máxima compactação e botões compactos na linha do chefe
 st.markdown("""
 <style>
     /* Compactar e puxar elementos estritamente para cima na barra lateral */
@@ -51,6 +51,14 @@ st.markdown("""
     /* Padronizar botões gerais */
     div[data-testid="stButton"] button {
         font-weight: bold;
+    }
+
+    /* Ajuste milimétrico para o botão compacto de cadastro ao lado do Chefe de Turno */
+    div[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        min-height: 38px !important;
+        height: 38px !important;
+        padding: 0px 8px !important;
+        margin-top: 26px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -220,7 +228,7 @@ try:
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    # Linha 1: Data, Hora Inicial e Hora Final em 3 colunas iguais lado a lado
+    # Linha 1: Data, Hora Inicial e Hora Final alinhados lado a lado
     col_d, col_h1, col_h2 = st.sidebar.columns([1.1, 1.0, 1.0])
     with col_d:
         data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
@@ -229,62 +237,54 @@ try:
     with col_h2:
         hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8, key="sel_h_fim")
         
-    # Linha 2: Turma / Equipe e Turno em 2 colunas iguais lado a lado
+    # Linha 2: Turma / Equipe e Turno alinhados lado a lado
     col_turma, col_turno = st.sidebar.columns([1, 1])
     with col_turma:
         turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno
-    chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+    # Linha 3: Chefe de Turno (reduzido em 40%) com o emoji de gerenciamento (➕ / ⚙️) ao lado
+    col_chefe_sel, col_btn_gestao = st.sidebar.columns([3.3, 0.7])
+    with col_chefe_sel:
+        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+    with col_btn_gestao:
+        if st.sidebar.button("⚙️", key="btn_gestao_chefe", help="Gerenciar Cadastro / Exclusão de Chefes"):
+            st.session_state['mostrar_gestao_chefe'] = not st.session_state.get('mostrar_gestao_chefe', False)
 
-    # Botões de Inclusão (+) e Exclusão (-) de Chefes logo abaixo do campo Chefe de Turno
-    col_btn_inc, col_btn_exc = st.sidebar.columns([1, 1])
-    with col_btn_inc:
-        if st.sidebar.button("➕ Novo Chefe", use_container_width=True, key="btn_cad_chefe"):
-            st.session_state['mostrar_cadastro_chefe'] = True
-            st.session_state['mostrar_exclusao_chefe'] = False
-    with col_btn_exc:
-        if st.sidebar.button("➖ Remover Chefe", use_container_width=True, key="btn_exc_chefe"):
-            st.session_state['mostrar_exclusao_chefe'] = True
-            st.session_state['mostrar_cadastro_chefe'] = False
-
-    if st.session_state.get('mostrar_cadastro_chefe', False):
+    # Painel retrátil de Gestão de Chefes (Cadastro e Exclusão)
+    if st.session_state.get('mostrar_gestao_chefe', False):
         st.sidebar.markdown("---")
-        st.sidebar.markdown("#### 👤 Registar Novo Chefe")
-        novo_matricula = st.sidebar.text_input("Matrícula")
-        novo_nome = st.sidebar.text_input("Nome Completo")
-        if st.sidebar.button("💾 Salvar Novo Chefe", key="save_chefe_btn"):
-            if novo_matricula and novo_nome:
-                novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
-                if novo_chefe_str not in st.session_state.lista_chefes:
-                    st.session_state.lista_chefes.append(novo_chefe_str)
-                    salvar_chefe_nuvem(novo_chefe_str)
-                    st.session_state['mostrar_cadastro_chefe'] = False
-                    st.sidebar.success("Chefe registado com sucesso!")
-                    st.rerun()
+        st.sidebar.markdown("#### 👥 Gestão de Chefes de Turno")
+        acao_chefe = st.sidebar.radio("Ação", options=["Cadastrar Novo", "Remover Existente"], key="radio_acao_chefe", label_visibility="collapsed")
+        
+        if acao_chefe == "Cadastrar Novo":
+            novo_matricula = st.sidebar.text_input("Matrícula")
+            novo_nome = st.sidebar.text_input("Nome Completo")
+            if st.sidebar.button("💾 Salvar Novo Chefe", key="save_chefe_btn"):
+                if novo_matricula and novo_nome:
+                    novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
+                    if novo_chefe_str not in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.append(novo_chefe_str)
+                        salvar_chefe_nuvem(novo_chefe_str)
+                        st.sidebar.success("Chefe cadastrado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.sidebar.warning("Este chefe já está cadastrado.")
                 else:
-                    st.sidebar.warning("Este chefe já está registado.")
-            else:
-                st.sidebar.error("Preencha matrícula e nome.")
-        st.sidebar.markdown("---")
-
-    if st.session_state.get('mostrar_exclusao_chefe', False):
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
-        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean")
-        if st.sidebar.button("⚠️ Confirmar Exclusão", key="conf_rem_chefe_btn"):
-            chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
-            if chefe_a_remover in chefes_base_original:
-                st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
-            else:
-                if chefe_a_remover in st.session_state.lista_chefes:
-                    st.session_state.lista_chefes.remove(chefe_a_remover)
-                    remover_chefe_nuvem(chefe_a_remover)
-                    st.session_state['mostrar_exclusao_chefe'] = False
-                    st.sidebar.success("Chefe removido com sucesso!")
-                    st.rerun()
+                    st.sidebar.error("Preencha matrícula e nome.")
+        else:
+            chefe_a_remover = st.sidebar.selectbox("Selecionar chefe", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean")
+            if st.sidebar.button("⚠️ Confirmar Exclusão", key="conf_rem_chefe_btn"):
+                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
+                if chefe_a_remover in chefes_base_original:
+                    st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
+                else:
+                    if chefe_a_remover in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.remove(chefe_a_remover)
+                        remover_chefe_nuvem(chefe_a_remover)
+                        st.sidebar.success("Chefe removido com sucesso!")
+                        st.rerun()
         st.sidebar.markdown("---")
 
     cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
