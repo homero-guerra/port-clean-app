@@ -285,27 +285,27 @@ try:
             <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
                 @page {{ size: landscape; margin: 6mm; }}
-                body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 5px; }}
-                .header {{ border-bottom: 2px solid #003366; padding-bottom: 4mm; margin-bottom: 10px; }}
-                .header h1 {{ margin: 0; font-size: 16px; color: #003366; }}
-                .header p {{ margin: 2px 0 0 0; color: #475569; font-size: 10px; }}
+                body {{ font-family: Arial, sans-serif; color: #000000; margin: 0; padding: 5px; }}
+                .header {{ border-bottom: 2px solid #000000; padding-bottom: 4mm; margin-bottom: 10px; }}
+                .header h1 {{ margin: 0; font-size: 16px; color: #000000; font-weight: bold; }}
+                .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 10px; }}
                 .bloco-container {{ margin-top: 10px; page-break-inside: avoid; }}
                 .page-break {{ page-break-before: always; }}
                 .bloco-titulo {{ 
                     background-color: #f1f5f9; 
-                    padding: 5px 8px; 
-                    font-size: 11px; 
+                    padding: 8px 12px; 
+                    font-size: 14px; 
                     font-weight: bold; 
-                    color: #003366; 
-                    border-left: 4px solid #003366; 
+                    color: #000000; 
+                    border-left: 5px solid #000000; 
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                 }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 9px; }}
-                th {{ background-color: #003366; color: white; padding: 4px; text-align: left; }}
-                td {{ padding: 3px; border: 1px solid #cbd5e1; }}
-                tr:nth-child(even) {{ background-color: #f8fafc; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 9px; color: #000000; }}
+                th {{ background-color: #e2e8f0; color: #000000; padding: 4px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
+                td {{ padding: 3px; border: 1px solid #000000; color: #000000; }}
+                tr:nth-child(even) {{ background-color: #ffffff; }}
             </style>
         </head>
         <body>
@@ -346,7 +346,7 @@ try:
                     <div class="bloco-container">
                         <div class="bloco-titulo">
                             <span>{titulo_turno}</span>
-                            <span style="font-size: 10px; font-weight: normal; color: #334155;">
+                            <span style="font-size: 11px; font-weight: normal; color: #000000;">
                                 👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
                             </span>
                         </div>
