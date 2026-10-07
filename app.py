@@ -206,163 +206,6 @@ try:
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO
-    # ==========================================
-    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
-
-    with st.sidebar.form("form_inserir_atividade"):
-        
-        col_d, col_h1, col_h2 = st.columns([1.2, 1.4, 1.4])
-        with col_d:
-            data_stamp = st.date_input("Data", value=datetime.now().date())
-        with col_h1:
-            hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7)
-        with col_h2:
-            hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8)
-            
-        st.markdown("---")
-        
-        col_lbl_chefe, col_btn_plus, col_btn_minus = st.columns([3, 1, 1])
-        with col_lbl_chefe:
-            chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes)
-        with col_btn_plus:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-            abrir_cadastro = st.form_submit_button("➕")
-        with col_btn_minus:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-            abrir_exclusao = st.form_submit_button("➖")
-
-        if abrir_cadastro:
-            st.session_state['mostrar_cadastro_chefe'] = True
-            st.session_state['mostrar_exclusao_chefe'] = False
-
-        if abrir_exclusao:
-            st.session_state['mostrar_exclusao_chefe'] = True
-            st.session_state['mostrar_cadastro_chefe'] = False
-
-        if st.session_state.get('mostrar_cadastro_chefe', False):
-            st.markdown("---")
-            st.markdown("#### 👤 Registar Novo Chefe")
-            novo_matricula = st.text_input("Matrícula")
-            novo_nome = st.text_input("Nome Completo")
-            if st.form_submit_button("💾 Salvar Novo Chefe"):
-                if novo_matricula and novo_nome:
-                    novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
-                    if novo_chefe_str not in st.session_state.lista_chefes:
-                        st.session_state.lista_chefes.append(novo_chefe_str)
-                        salvar_chefe_nuvem(novo_chefe_str)
-                        st.session_state['mostrar_cadastro_chefe'] = False
-                        st.success("Chefe registado e salvo com sucesso na nuvem!")
-                        st.rerun()
-                    else:
-                        st.warning("Este chefe já está registado.")
-                else:
-                    st.error("Preencha matrícula e nome.")
-            st.markdown("---")
-
-        if st.session_state.get('mostrar_exclusao_chefe', False):
-            st.markdown("---")
-            st.markdown("#### 🗑️ Remover Chefe Cadastrado")
-            chefe_a_remover = st.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes)
-            if st.form_submit_button("⚠️ Confirmar Exclusão"):
-                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
-                if chefe_a_remover in chefes_base_original:
-                    st.warning("Não é possível remover chefes importados da base de dados oficial do sistema.")
-                else:
-                    if chefe_a_remover in st.session_state.lista_chefes:
-                        st.session_state.lista_chefes.remove(chefe_a_remover)
-                        remover_chefe_nuvem(chefe_a_remover)
-                        st.session_state['mostrar_exclusao_chefe'] = False
-                        st.success("Chefe removido com sucesso!")
-                        st.rerun()
-            st.markdown("---")
-
-        col_t1, col_t2 = st.columns(2)
-        with col_t1:
-            turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"])
-        with col_t2:
-            turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"])
-
-        cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
-        css_dinamico = f"""
-        <style>
-            div[data-baseweb="select"] span[title="AMARELA"],
-            div[data-baseweb="select"] span[title="BRANCA"],
-            div[data-baseweb="select"] span[title="VERDE"],
-            div[data-baseweb="select"] span[title="AZUL"],
-            div[data-baseweb="select"] span[title="ADM"],
-            div[data-baseweb="select"] span[title="DIURNO"],
-            div[data-baseweb="select"] span[title="NOTURNO"] {{
-                color: {cor_dinamica} !important;
-                font-weight: bold !important;
-            }}
-        </style>
-        """
-        st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
-
-        st.markdown("---")
-
-    # ==========================================
-    # SELETOR DE ATIVIDADE FORA DO FORMULÁRIO (ATUALIZAÇÃO INSTANTÂNEA)
-    # ==========================================
-    opcao_selecionada = st.sidebar.selectbox(
-        "Selecione o COD. ATIVIDADE", 
-        options=lista_opcoes_atividades,
-        index=0,
-        placeholder="Digite para pesquisar..."
-    )
-
-    if " - " in opcao_selecionada:
-        cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
-    else:
-        cod_atividade_escolhido = opcao_selecionada
-        descricao_atividade = "Atividade Operacional Registrada"
-
-    ativo_extraido = "GERAL"
-    if col_cod in df_os.columns and col_ativo in df_os.columns:
-        resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
-        if not resultado_sql.empty:
-            val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
-            if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
-                ativo_extraido = val_ativo
-            else:
-                partes = cod_atividade_escolhido.split('.')
-                if len(partes) > 0 and len(partes[0]) >= 4:
-                    ativo_extraido = partes[0][:8]
-    else:
-        partes = cod_atividade_escolhido.split('.')
-        if len(partes) > 0:
-            ativo_extraido = partes[0][:8]
-
-    if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
-        partes = cod_atividade_escolhido.split('.')
-        ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
-
-    # Aviso textual atualizado instantaneamente ao alterar a atividade
-    st.sidebar.info(f"{descricao_atividade}")
-
-    # Botão de inclusão interativo fora do formulário para salvar com os dados reativos
-    if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
-        novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
-        novo_registro = {
-            "UID": novo_uid,
-            "TURMA": turma_form,
-            "CHEFE DE TURNO": chefe_form,
-            "TURNO": turno_form,
-            "DATA": data_stamp.strftime('%d/%m/%Y'),
-            "Cód. Atividade": cod_atividade_escolhido,
-            "Hora Inicial": hora_ini_form,
-            "Hora Final": hora_fim_form,
-            "Ativo": ativo_extraido,
-            "Retirada NR12": "NÃO",
-            "Dados da Atividade": descricao_atividade
-        }
-        st.session_state.plano_operacional.append(novo_registro)
-        salvar_plano_nuvem(st.session_state.plano_operacional)
-        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
-        st.rerun()
-
-    # ==========================================
     # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO PROPORCIONAL E BOTÃO DE IMPRESSÃO
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
@@ -400,7 +243,7 @@ try:
             with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
                 st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
-    # Extrair metadados específicos para cada Turno individualmente (Diurno e ADM independentes)
+    # Extrair metadados específicos para cada Turno individualmente
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
     if not df_diurno_ref.empty:
         turma_diurno = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
@@ -416,6 +259,14 @@ try:
     else:
         turma_adm = "ADM"
         chefe_adm = "20000000 - GERSON FUENTES"
+
+    df_noturno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "NOTURNO"] if not df_filtrado_data.empty else pd.DataFrame()
+    if not df_noturno_ref.empty:
+        turma_noturno = str(df_noturno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
+        chefe_noturno = str(df_noturno_ref.iloc[-1].get('CHEFE_TURNO', df_noturno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
+    else:
+        turma_noturno = "AMARELA"
+        chefe_noturno = "20000000 - GERSON FUENTES"
 
     data_comum = data_selecionada_filtro
 
@@ -476,8 +327,8 @@ try:
                     t_info = turma_diurno
                     c_info = chefe_diurno
                 else:
-                    t_info = "N/D"
-                    c_info = "N/D"
+                    t_info = turma_noturno
+                    c_info = chefe_noturno
                 d_info = data_plano
 
                 if not df_t.empty:
@@ -544,6 +395,143 @@ try:
         }
     </style>
     """, unsafe_allow_html=True)
+
+    # ==========================================
+    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO
+    # ==========================================
+    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
+
+    data_stamp = data_pesquisa_obj
+
+    col_h1, col_h2 = st.sidebar.columns([1.0, 1.0])
+    with col_h1:
+        hora_ini_form = st.sidebar.selectbox("Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini")
+    with col_h2:
+        hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8, key="sel_h_fim")
+        
+    col_turma, col_turno = st.sidebar.columns([1, 1])
+    with col_turma:
+        turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
+    with col_turno:
+        turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
+
+    col_chefe_sel, col_btn_gear = st.sidebar.columns([2.3, 0.7])
+    with col_chefe_sel:
+        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+    with col_btn_gear:
+        st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
+        if st.sidebar.button("⚙️", key="btn_cad_chefe", help="Gerenciar Chefes"):
+            st.session_state['mostrar_gestao_chefe'] = not st.session_state.get('mostrar_gestao_chefe', False)
+
+    if st.session_state.get('mostrar_gestao_chefe', False):
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("#### 👥 Gestão de Chefes")
+        novo_matricula = st.sidebar.text_input("Matrícula")
+        novo_nome = st.sidebar.text_input("Nome Completo")
+        col_s_ch, col_r_ch = st.sidebar.columns(2)
+        with col_s_ch:
+            if st.sidebar.button("💾 Salvar", key="save_chefe_btn", use_container_width=True):
+                if novo_matricula and novo_nome:
+                    novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
+                    if novo_chefe_str not in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.append(novo_chefe_str)
+                        salvar_chefe_nuvem(novo_chefe_str)
+                        st.session_state['mostrar_gestao_chefe'] = False
+                        st.sidebar.success("Salvo com sucesso!")
+                        st.rerun()
+                    else:
+                        st.sidebar.warning("Já cadastrado.")
+                else:
+                    st.sidebar.error("Preencha os campos.")
+        with col_r_ch:
+            chefe_a_remover = st.sidebar.selectbox("Remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean", label_visibility="collapsed")
+            if st.sidebar.button("🗑️ Excluir", key="conf_rem_chefe_btn", use_container_width=True):
+                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
+                if chefe_a_remover in chefes_base_original:
+                    st.sidebar.warning("Impossível remover chefe da base oficial.")
+                else:
+                    if chefe_a_remover in st.session_state.lista_chefes:
+                        st.session_state.lista_chefes.remove(chefe_a_remover)
+                        remover_chefe_nuvem(chefe_a_remover)
+                        st.session_state['mostrar_gestao_chefe'] = False
+                        st.sidebar.success("Removido!")
+                        st.rerun()
+        st.sidebar.markdown("---")
+
+    cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
+    css_dinamico = f"""
+    <style>
+        div[data-baseweb="select"] span[title="AMARELA"],
+        div[data-baseweb="select"] span[title="BRANCA"],
+        div[data-baseweb="select"] span[title="VERDE"],
+        div[data-baseweb="select"] span[title="AZUL"],
+        div[data-baseweb="select"] span[title="ADM"],
+        div[data-baseweb="select"] span[title="DIURNO"],
+        div[data-baseweb="select"] span[title="NOTURNO"] {{
+            color: {cor_dinamica} !important;
+            font-weight: bold !important;
+        }}
+    </style>
+    """
+    st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
+
+    st.sidebar.markdown("---")
+    
+    opcao_selecionada = st.sidebar.selectbox(
+        "Selecione o COD. ATIVIDADE", 
+        options=lista_opcoes_atividades,
+        index=0,
+        placeholder="Digite para pesquisar...",
+        key="sel_atividade_main"
+    )
+
+    if " - " in opcao_selecionada:
+        cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
+    else:
+        cod_atividade_escolhido = opcao_selecionada
+        descricao_atividade = "Atividade Operacional Registrada"
+
+    ativo_extraido = "GERAL"
+    if col_cod in df_os.columns and col_ativo in df_os.columns:
+        resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
+        if not resultado_sql.empty:
+            val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
+            if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
+                ativo_extraido = val_ativo
+            else:
+                partes = cod_atividade_escolhido.split('.')
+                if len(partes) > 0 and len(partes[0]) >= 4:
+                    ativo_extraido = partes[0][:8]
+    else:
+        partes = cod_atividade_escolhido.split('.')
+        if len(partes) > 0:
+            ativo_extraido = partes[0][:8]
+
+    if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
+        partes = cod_atividade_escolhido.split('.')
+        ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
+
+    st.sidebar.info(f"{descricao_atividade}")
+
+    if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
+        novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
+        novo_registro = {
+            "UID": novo_uid,
+            "TURMA": turma_form,
+            "CHEFE DE TURNO": chefe_form,
+            "TURNO": turno_form,
+            "DATA": data_stamp.strftime('%d/%m/%Y'),
+            "Cód. Atividade": cod_atividade_escolhido,
+            "Hora Inicial": hora_ini_form,
+            "Hora Final": hora_fim_form,
+            "Ativo": ativo_extraido,
+            "Retirada NR12": "NÃO",
+            "Dados da Atividade": descricao_atividade
+        }
+        st.session_state.plano_operacional.append(novo_registro)
+        salvar_plano_nuvem(st.session_state.plano_operacional)
+        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form} para o dia {data_stamp.strftime('%d/%m/%Y')}!")
+        st.rerun()
 
     # ==========================================
     # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
@@ -630,16 +618,10 @@ Atenciosamente,"""
             data_info = data_comum
             cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
         else:
-            if not df_turno_atual.empty:
-                ultima_linha = df_turno_atual.iloc[-1]
-                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
-                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
-                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
-            else:
-                turma_info = "AMARELA"
-                chefe_info = chefe_diurno
-                data_info = data_selecionada_filtro
-            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
+            turma_info = turma_noturno
+            chefe_info = chefe_noturno
+            data_info = data_comum
+            cor_destaque = mapa_cores.get(turma_noturno, "#1E90FF")
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
@@ -678,7 +660,7 @@ Atenciosamente,"""
 
         with col_botao_excluir:
             if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos de datas anteriores estão protegidos no modo leitura.")
             else:
                 if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
