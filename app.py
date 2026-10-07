@@ -20,10 +20,10 @@ mapa_cores = {
     "ADM": "#A9A9A9"
 }
 
-# Estilização CSS para compactar entrelinhas, margens e aproximar a Lista de Distribuição
+# Estilização CSS para máxima compactação vertical e visibilidade total da barra lateral
 st.markdown("""
 <style>
-    /* Compactar e puxar elementos para cima na barra lateral */
+    /* Compactar e puxar elementos estritamente para cima na barra lateral */
     [data-testid="stSidebar"] {
         min-width: 400px !important;
         max-width: 440px !important;
@@ -32,24 +32,20 @@ st.markdown("""
         padding-top: 0rem !important;
     }
     [data-testid="stSidebar"] .block-container {
-        padding-top: 0.2rem !important;
+        padding-top: 0.1rem !important;
+        padding-bottom: 1rem !important;
     }
     [data-testid="stSidebar"] .element-container {
-        margin-bottom: -0.4rem !important;
+        margin-bottom: -0.6rem !important;
     }
     
-    /* Compactar entrelinhas e espaços verticais gerais da página principal */
+    /* Compactar espaços verticais gerais da página principal */
     .block-container {
         padding-top: 0.8rem !important;
         padding-bottom: 1rem !important;
     }
     h1 {
         margin-bottom: 0.1rem !important;
-    }
-    
-    /* Reduzir espaçamento entre as seções de blocos na tela */
-    div.element-container {
-        margin-bottom: 0.2rem !important;
     }
     
     /* Padronizar botões gerais */
@@ -169,6 +165,31 @@ try:
                 pass
         return sorted(list(set(chefes_iniciais)))
 
+    def salvar_chefe_nuvem(novo_chefe):
+        try:
+            chefes_atuais = []
+            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                    chefes_atuais = [line.strip() for line in f if line.strip()]
+            if novo_chefe not in chefes_atuais:
+                chefes_atuais.append(novo_chefe)
+                with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+                    f.write("\n".join(chefes_atuais))
+        except:
+            pass
+
+    def remover_chefe_nuvem(chefe_para_remover):
+        try:
+            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                    chefes_atuais = [line.strip() for line in f if line.strip()]
+                if chefe_para_remover in chefes_atuais:
+                    chefes_atuais.remove(chefe_para_remover)
+                    with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+                        f.write("\n".join(chefes_atuais))
+        except:
+            pass
+
     # ==========================================
     # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
@@ -217,6 +238,54 @@ try:
 
     # Linha 3: Chefe de Turno
     chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+
+    # Botões de Inclusão (+) e Exclusão (-) de Chefes logo abaixo do campo Chefe de Turno
+    col_btn_inc, col_btn_exc = st.sidebar.columns([1, 1])
+    with col_btn_inc:
+        if st.sidebar.button("➕ Novo Chefe", use_container_width=True, key="btn_cad_chefe"):
+            st.session_state['mostrar_cadastro_chefe'] = True
+            st.session_state['mostrar_exclusao_chefe'] = False
+    with col_btn_exc:
+        if st.sidebar.button("➖ Remover Chefe", use_container_width=True, key="btn_exc_chefe"):
+            st.session_state['mostrar_exclusao_chefe'] = True
+            st.session_state['mostrar_cadastro_chefe'] = False
+
+    if st.session_state.get('mostrar_cadastro_chefe', False):
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("#### 👤 Registar Novo Chefe")
+        novo_matricula = st.sidebar.text_input("Matrícula")
+        novo_nome = st.sidebar.text_input("Nome Completo")
+        if st.sidebar.button("💾 Salvar Novo Chefe", key="save_chefe_btn"):
+            if novo_matricula and novo_nome:
+                novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
+                if novo_chefe_str not in st.session_state.lista_chefes:
+                    st.session_state.lista_chefes.append(novo_chefe_str)
+                    salvar_chefe_nuvem(novo_chefe_str)
+                    st.session_state['mostrar_cadastro_chefe'] = False
+                    st.sidebar.success("Chefe registado com sucesso!")
+                    st.rerun()
+                else:
+                    st.sidebar.warning("Este chefe já está registado.")
+            else:
+                st.sidebar.error("Preencha matrícula e nome.")
+        st.sidebar.markdown("---")
+
+    if st.session_state.get('mostrar_exclusao_chefe', False):
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("#### 🗑️ Remover Chefe Cadastrado")
+        chefe_a_remover = st.sidebar.selectbox("Selecione o chefe a remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean")
+        if st.sidebar.button("⚠️ Confirmar Exclusão", key="conf_rem_chefe_btn"):
+            chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
+            if chefe_a_remover in chefes_base_original:
+                st.sidebar.warning("Não é possível remover chefes importados da base oficial.")
+            else:
+                if chefe_a_remover in st.session_state.lista_chefes:
+                    st.session_state.lista_chefes.remove(chefe_a_remover)
+                    remover_chefe_nuvem(chefe_a_remover)
+                    st.session_state['mostrar_exclusao_chefe'] = False
+                    st.sidebar.success("Chefe removido com sucesso!")
+                    st.rerun()
+        st.sidebar.markdown("---")
 
     cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
     css_dinamico = f"""
@@ -570,7 +639,7 @@ Atenciosamente,"""
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
             else:
-                if st.button("🗑️️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
                     estado_grid = st.session_state.get(selecao_key, {})
                     linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
                     
