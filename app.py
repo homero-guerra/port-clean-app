@@ -58,7 +58,7 @@ st.markdown("""
 # Título principal atualizado
 st.markdown("<h1>Plano de Limpeza Operacional</h1>", unsafe_allow_html=True)
 
-# Função para carregar e processar os dados com segurança e deteção de delimitador
+# Função para carregar e processar os dados com segurança e detecção de delimitador
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
     try:
@@ -395,7 +395,7 @@ try:
     modo_leitura = (data_selecionada_filtro != data_hoje_str)
 
     if modo_leitura:
-        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registros de datas anteriores ficam em consulta protegida.")
+        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registos de datas anteriores ficam em consulta protegida.")
 
     # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
     col_dt_final = None
@@ -408,7 +408,7 @@ try:
     if col_dt_final and not df_os.empty:
         df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
         if not df_os_filtrado.empty:
-            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
+            with st.expander(f"📂 Ver Registos da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
                 st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
     # Extrair metadados específicos para cada Turno individualmente
@@ -495,7 +495,7 @@ try:
                         <div class="bloco-titulo">
                             <span>{titulo_turno}</span>
                             <span style="font-size: 10px; font-weight: normal; color: #334155;">
-                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
+                                👥 <b>Equipa:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
                             </span>
                         </div>
                         <table>
@@ -599,7 +599,7 @@ Atenciosamente,"""
     # MODAL DE ALTERAÇÃO DE HORÁRIO
     # ==========================================
     @st.dialog("🕒 Alterar Horário da Atividade")
-    def modal_alterar_horario(uid_alvo, titulo_t, df_t, sel_key):
+    def modal_alterar_horario(uid_alvo, titulo_t):
         st.write(f"Editando horário no **{titulo_t}**")
         nova_h_ini = st.selectbox("Nova Hora Inicial", options=lista_horarios, key="modal_nova_hi")
         nova_h_fim = st.selectbox("Nova Hora Final", options=lista_horarios, key="modal_nova_hf")
@@ -611,11 +611,6 @@ Atenciosamente,"""
                     reg['Hora Final'] = nova_h_fim
                     break
             salvar_plano_nuvem(st.session_state.plano_operacional)
-            
-            # Limpa automaticamente a seleção após salvar
-            if sel_key in st.session_state:
-                st.session_state[sel_key] = {"selection": {"rows": []}}
-                
             st.success("Horário alterado com sucesso!")
             st.rerun()
 
@@ -659,7 +654,7 @@ Atenciosamente,"""
             <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
                 <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
                 <span style="color: #d0d0d0; font-size: 14px;">
-                    <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                    <span style="color: {cor_destaque};">👥</span> <b>Equipa:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
                     &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
                     &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
                 </span>
@@ -667,50 +662,7 @@ Atenciosamente,"""
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
-        with col_btn_alt:
-            if modo_leitura:
-                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
-            else:
-                if st.button("🕒 Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_sel = estado_grid.get("selection", {}).get("rows", [])
-                    if not linhas_sel:
-                        st.warning("⚠️ Selecione uma linha na tabela.")
-                    else:
-                        idx_l = linhas_sel[0]
-                        if idx_l < len(df_turno_atual):
-                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
-                            modal_alterar_horario(uid_alvo, titulo_turno, df_turno_atual, selecao_key)
-
-        with col_botao_excluir:
-            if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros anteriores estão protegidos.")
-            else:
-                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                    
-                    if linhas_selecionadas:
-                        uids_a_remover = []
-                        for idx_sel in linhas_selecionadas:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            
-                            if selecao_key in st.session_state:
-                                del st.session_state[selecao_key]
-                            st.session_state[selecao_key] = {"selection": {"rows": []}}
-                                
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("Selecione pelo menos uma linha na tabela.")
-
+        # Preparação do DataFrame com coluna de checkbox para seleção na tabela editável
         if not df_turno_atual.empty:
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
@@ -718,32 +670,32 @@ Atenciosamente,"""
             if 'Observação' not in df_exibicao.columns:
                 df_exibicao['Observação'] = ""
                 
-            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
+            df_exibicao.insert(0, 'Selecionar', False)
+            df_exibicao.insert(1, 'Nº', range(1, len(df_exibicao) + 1))
             
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Observação']
+            colunas_exibir = ['Selecionar', 'Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Observação']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
             edited_df = st.data_editor(
                 df_final_exibir,
                 use_container_width=True,
                 hide_index=True,
-                selection_mode="disabled" if modo_leitura else "multi-row",
-                on_select="rerun",
                 column_config={
+                    "Selecionar": st.column_config.CheckboxColumn("Sel.", width="small", default=False),
                     "Nº": st.column_config.NumberColumn("Nº", width="small", disabled=True),
-                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", disabled=True),
-                    "Hora Inicial": st.column_config.TextColumn("Hora Inicial", width="small", disabled=True),
-                    "Hora Final": st.column_config.TextColumn("Hora Final", width="small", disabled=True),
-                    "Ativo": st.column_config.TextColumn("Ativo", disabled=True),
-                    "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="small", disabled=True),
-                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", disabled=True),
+                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", width="medium", disabled=True),
+                    "Hora Inicial": st.column_config.TextColumn("Hora Ini.", width="small", disabled=True),
+                    "Hora Final": st.column_config.TextColumn("Hora Fim.", width="small", disabled=True),
+                    "Ativo": st.column_config.TextColumn("Ativo", width="small", disabled=True),
+                    "Retirada NR12": st.column_config.TextColumn("NR12", width="small", disabled=True),
+                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="large", disabled=True),
                     "Observação": st.column_config.TextColumn("Observação", width="medium", disabled=False if not modo_leitura else True),
                     "UID": None
                 },
                 key=selecao_key
             )
             
-            # Atualiza a observação no estado e salva na nuvem ao editar
+            # Sincronizar alterações de Observação
             if not modo_leitura and 'Observação' in edited_df.columns:
                 changed = False
                 for _, row in edited_df.iterrows():
@@ -756,7 +708,49 @@ Atenciosamente,"""
                                 changed = True
                 if changed:
                     salvar_plano_nuvem(st.session_state.plano_operacional)
+            
+            # Identificar linhas selecionadas pelas caixas de seleção
+            linhas_selecionadas_idx = edited_df.index[edited_df['Selecionar'] == True].tolist()
         else:
+            linhas_selecionadas_idx = []
+
+        with col_btn_alt:
+            if modo_leitura:
+                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
+            else:
+                if st.button("🕒 Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
+                    if not linhas_selecionadas_idx:
+                        st.warning("⚠️ Selecione pelo menos uma linha na tabela.")
+                    elif len(linhas_selecionadas_idx) > 1:
+                        st.warning("⚠️ Selecione apenas uma linha para alterar o horário.")
+                    else:
+                        idx_l = linhas_selecionadas_idx[0]
+                        if idx_l < len(df_turno_atual):
+                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            modal_alterar_horario(uid_alvo, titulo_turno)
+
+        with col_botao_excluir:
+            if modo_leitura:
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores estão protegidos.")
+            else:
+                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                    if linhas_selecionadas_idx:
+                        uids_a_remover = []
+                        for idx_sel in linhas_selecionadas_idx:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
+                        
+                        if uids_a_remover:
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
+                    else:
+                        st.warning("Selecione pelo menos uma linha na tabela.")
+
+        if df_turno_atual.empty:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
         st.markdown("<br>", unsafe_allow_html=True)
