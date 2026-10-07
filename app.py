@@ -710,4 +710,56 @@ Atenciosamente,"""
                     for reg in st.session_state.plano_operacional:
                         if str(reg.get('UID')) == str(uid_val):
                             if reg.get('Observação', '') != obs_val:
-                                reg
+                                reg['Observação'] = obs_val
+                                changed = True
+                if changed:
+                    salvar_plano_nuvem(st.session_state.plano_operacional)
+            
+            # Identificar linhas selecionadas pelas caixas de seleção
+            linhas_selecionadas_idx = edited_df.index[edited_df['Selecionar'] == True].tolist()
+        else:
+            linhas_selecionadas_idx = []
+
+        with col_btn_alt:
+            if modo_leitura:
+                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
+            else:
+                if st.button("🕒 Horário", key=f"btn_toggle_alt_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
+                    if not linhas_selecionadas_idx:
+                        st.warning("⚠️ Selecione pelo menos uma linha na tabela.")
+                    elif len(linhas_selecionadas_idx) > 1:
+                        st.warning("⚠️ Selecione apenas uma linha para alterar o horário.")
+                    else:
+                        idx_l = linhas_selecionadas_idx[0]
+                        if idx_l < len(df_turno_atual):
+                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            modal_alterar_horario(uid_alvo, titulo_turno)
+
+        with col_botao_excluir:
+            if modo_leitura:
+                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores estão protegidos.")
+            else:
+                if st.button("🗑️ Excluir", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
+                    if linhas_selecionadas_idx:
+                        uids_a_remover = []
+                        for idx_sel in linhas_selecionadas_idx:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
+                        
+                        if uids_a_remover:
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
+                    else:
+                        st.warning("Selecione pelo menos uma linha na tabela.")
+
+        if df_turno_atual.empty:
+            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+
+except Exception as e:
+    st.error(f"Erro ao carregar o sistema: {e}")
