@@ -652,8 +652,8 @@ Atenciosamente,"""
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
-        # Cabeçalho do Bloco + Botão de Excluir + Botão de Alterar Horário Modal
-        col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = st.columns([5.5, 1.0, 1.0, 1.0])
+        # Cabeçalho do Bloco
+        col_titulo_bloco, col_vazio_bloco = st.columns([6.5, 1.5])
         with col_titulo_bloco:
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -719,6 +719,8 @@ Atenciosamente,"""
         else:
             linhas_selecionadas_idx = []
 
+        # Botões de ação (Alterar Horário e Excluir) colocados logo ABAIXO da tabela para correta leitura do estado
+        col_vazio_btns, col_btn_alt, col_botao_excluir = st.columns([5.5, 1.25, 1.25])
         with col_btn_alt:
             if modo_leitura:
                 st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True)
