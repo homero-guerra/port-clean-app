@@ -411,7 +411,7 @@ try:
     if col_dt_final and not df_os.empty:
         df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
         if not df_os_filtrado.empty:
-            with st.expander(f"📂 Ver Registos da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
+            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
                 st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
     # Extrair metadados específicos para cada Turno individualmente
@@ -497,7 +497,6 @@ try:
                 df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
                 
                 if not df_t.empty:
-                    # Se for NOTURNO e houver ADM, quebra a página para ir para o verso
                     if codigo_turno == "NOTURNO" and tem_adm:
                         html += '<div class="page-break"></div>'
 
