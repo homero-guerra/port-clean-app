@@ -236,7 +236,7 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno (reduzido em 40%) com o emoji de cadastro/gestão (➕) ao lado
+    # Linha 3: Chefe de Turno com o emoji de cadastro/gestão (➕) ao lado
     col_chefe_sel, col_btn_plus = st.sidebar.columns([3.2, 0.8])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
@@ -427,119 +427,4 @@ try:
                 .header {{ border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }}
                 .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
                 .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
-                .bloco-container {{ margin-top: 15px; page-break-inside: avoid; }}
-                .bloco-titulo {{ 
-                    background-color: #f1f5f9; 
-                    padding: 6px 10px; 
-                    font-size: 12px; 
-                    font-weight: bold; 
-                    color: #003366; 
-                    border-left: 4px solid #003366; 
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }}
-                th {{ background-color: #003366; color: white; padding: 5px; text-align: left; }}
-                td {{ padding: 4px; border: 1px solid #cbd5e1; }}
-                tr:nth-child(even) {{ background-color: #f8fafc; }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
-                <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
-            </div>
-        """
-        
-        if df_dados.empty:
-            html += "<p>Nenhuma atividade registada para esta data.</p>"
-        else:
-            turnos_html = [
-                ("DIURNO", "Turno Diurno"),
-                ("ADM", "Turno ADM"),
-                ("NOTURNO", "Turno Noturno")
-            ]
-            for codigo_turno, titulo_turno in turnos_html:
-                df_t = df_dados[df_dados['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
-                
-                if codigo_turno == "ADM":
-                    t_info = turma_adm
-                    c_info = chefe_adm
-                elif codigo_turno == "DIURNO":
-                    t_info = turma_diurno
-                    c_info = chefe_diurno
-                else:
-                    t_info = "N/D"
-                    c_info = "N/D"
-                d_info = data_plano
-
-                if not df_t.empty:
-                    html += f"""
-                    <div class="bloco-container">
-                        <div class="bloco-titulo">
-                            <span>{titulo_turno}</span>
-                            <span style="font-size: 10px; font-weight: normal; color: #334155;">
-                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
-                            </span>
-                        </div>
-                        <table>
-                            <thead>
-                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
-                            </thead>
-                            <tbody>
-                    """
-                    for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
-                    html += "</tbody></table></div>"
-                    
-        html += """
-            <script>
-                window.onload = function() { 
-                    window.print(); 
-                }
-            </script>
-        </body>
-        </html>
-        """
-        return html
-
-    with col_down_grade:
-        if not df_filtrado_data.empty:
-            timestamp_str = datetime.now().strftime("%d%m%H%M")
-            nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
-            
-            html_para_download = gerar_html_retrato(df_filtrado_data, data_selecionada_filtro)
-            b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
-            
-            st.markdown(
-                f"""
-                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
-                        🖨️ Imprimir
-                    </button>
-                </a>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
-
-    st.markdown("""
-    <style>
-        button[kind="primary"] {
-            background-color: #003366 !important;
-            border-color: #003366 !important;
-            color: white !important;
-        }
-        button[kind="primary"]:hover {
-            background-color: #002244 !important;
-            border-color: #002244 !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK (ALINHADO E COMPACTO)
-    # ==========================================
-    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.2, 5.8, 1.0])
+                .bloco-container {{ margin-top: 15px; page-break-inside: avoid;
