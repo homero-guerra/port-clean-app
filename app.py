@@ -586,6 +586,30 @@ Atenciosamente,"""
 
     st.markdown("---")
 
+    # ==========================================
+    # MODAL DE ALTERAÇÃO DE HORÁRIO
+    # ==========================================
+    @st.dialog("🕒 Alterar Horário da Atividade")
+    def modal_alterar_horario(uid_alvo, titulo_t, sel_key):
+        st.write(f"Editando horário no **{titulo_t}**")
+        nova_h_ini = st.selectbox("Nova Hora Inicial", options=lista_horarios, key="modal_nova_hi")
+        nova_h_fim = st.selectbox("Nova Hora Final", options=lista_horarios, key="modal_nova_hf")
+        
+        if st.button("💾 Gravar Alteração", type="primary", use_container_width=True):
+            for reg in st.session_state.plano_operacional:
+                if str(reg.get('UID')) == str(uid_alvo):
+                    reg['Hora Inicial'] = nova_h_ini
+                    reg['Hora Final'] = nova_h_fim
+                    break
+            salvar_plano_nuvem(st.session_state.plano_operacional)
+            
+            if sel_key in st.session_state:
+                del st.session_state[sel_key]
+            st.session_state[sel_key] = {"selection": {"rows": []}}
+                
+            st.success("Horário alterado com sucesso!")
+            st.rerun()
+
     turnos_secoes = [
         ("DIURNO", "☀️ Turno Diurno"),
         ("ADM", "🏢 Turno ADM"),
@@ -619,7 +643,8 @@ Atenciosamente,"""
 
         selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
         
-        col_titulo_bloco, col_vazio_bloco, col_botao_excluir = st.columns([6.5, 1.5, 1.0])
+        # Cabeçalho com o título, botão "Alterar Horário" e botão "Excluir Linha" lado a lado no canto superior direito
+        col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = st.columns([5.0, 1.0, 1.0, 1.0])
         with col_titulo_bloco:
             html_cabecalho = f"""
             <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
@@ -633,6 +658,24 @@ Atenciosamente,"""
             """
             st.markdown(html_cabecalho, unsafe_allow_html=True)
         
+        with col_btn_alt:
+            if modo_leitura:
+                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores protegidos.")
+            else:
+                if st.button("🕒 Horário", key=f"btn_alt_bloco_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
+                    estado_grid = st.session_state.get(selecao_key, {})
+                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+                    
+                    if not linhas_selecionadas:
+                        st.warning("Selecione uma linha na tabela.")
+                    elif len(linhas_selecionadas) > 1:
+                        st.warning("Selecione apenas uma linha para alterar o horário.")
+                    else:
+                        idx_l = linhas_selecionadas[0]
+                        if idx_l < len(df_turno_atual):
+                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
+                            modal_alterar_horario(uid_alvo, titulo_turno, selecao_key)
+
         with col_botao_excluir:
             if modo_leitura:
                 st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
