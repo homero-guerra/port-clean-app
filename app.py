@@ -80,116 +80,122 @@ def carregar_e_processar_dados(caminho_arquivo):
 
 try:
     df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
+except Exception as e:
+    df_os = pd.DataFrame()
 
-    # ==========================================
-    # PERSISTÊNCIA EM NUVEM (FICHEIROS DE DADOS E CONFIGURAÇÕES)
-    # ==========================================
-    ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
-    ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
-    ARQUIVO_CONFIG_CHEFES = "config_chefes_nuvem.txt"
+# ==========================================
+# PERSISTÊNCIA EM NUVEM (FICHEIROS DE DADOS E CONFIGURAÇÕES)
+# ==========================================
+ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
+ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
+ARQUIVO_CONFIG_CHEFES = "config_chefes_nuvem.txt"
 
-    def carregar_plano_nuvem():
-        if os.path.exists(ARQUIVO_BANCO_DADOS):
-            try:
-                df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
-                if 'UID' not in df_persisted.columns:
-                    df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
-                
-                if 'Ativo' in df_persisted.columns:
-                    df_persisted['Ativo'] = df_persisted['Ativo'].apply(
-                        lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
-                    )
-                return df_persisted.to_dict(orient='records')
-            except:
-                pass
-        return [
-            {
-                "UID": "UID_1_001",
-                "TURMA": "AMARELA", 
-                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
-                "TURNO": "DIURNO", 
-                "DATA": datetime.now().strftime('%d/%m/%Y'), 
-                "Cód. Atividade": "3220TR04.3",
-                "Hora Inicial": "07:00", 
-                "Hora Final": "08:00", 
-                "Ativo": "3220TR04", 
-                "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR"
-            },
-            {
-                "UID": "UID_2_002",
-                "TURMA": "BRANCA", 
-                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
-                "TURNO": "ADM", 
-                "DATA": datetime.now().strftime('%d/%m/%Y'), 
-                "Cód. Atividade": "CT08.4",
-                "Hora Inicial": "08:00", 
-                "Hora Final": "17:00", 
-                "Ativo": "CT08", 
-                "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "CONTINUAR RECHEGO NA A4"
-            }
-        ]
+def carregar_plano_nuvem():
+    if os.path.exists(ARQUIVO_BANCO_DADOS):
+        try:
+            df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
+            if 'UID' not in df_persisted.columns:
+                df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
+            
+            if 'Ativo' in df_persisted.columns:
+                df_persisted['Ativo'] = df_persisted['Ativo'].apply(
+                    lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+                )
+            return df_persisted.to_dict(orient='records')
+        except:
+            pass
+    return [
+        {
+            "UID": "UID_1_001",
+            "TURMA": "AMARELA", 
+            "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
+            "TURNO": "DIURNO", 
+            "DATA": datetime.now().strftime('%d/%m/%Y'), 
+            "Cód. Atividade": "3220TR04.3",
+            "Hora Inicial": "07:00", 
+            "Hora Final": "08:00", 
+            "Ativo": "3220TR04", 
+            "Retirada NR12": "NÃO", 
+            "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR"
+        },
+        {
+            "UID": "UID_2_002",
+            "TURMA": "BRANCA", 
+            "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
+            "TURNO": "ADM", 
+            "DATA": datetime.now().strftime('%d/%m/%Y'), 
+            "Cód. Atividade": "CT08.4",
+            "Hora Inicial": "08:00", 
+            "Hora Final": "17:00", 
+            "Ativo": "CT08", 
+            "Retirada NR12": "NÃO", 
+            "Dados da Atividade": "CONTINUAR RECHEGO NA A4"
+        }
+    ]
 
-    def salvar_plano_nuvem(lista_registros):
+def salvar_plano_nuvem(lista_registros):
+    try:
         df_to_save = pd.DataFrame(lista_registros)
         df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding='utf-8')
+    except Exception:
+        pass
 
-    def carregar_emails_nuvem():
-        if os.path.exists(ARQUIVO_CONFIG_EMAILS):
-            try:
-                with open(ARQUIVO_CONFIG_EMAILS, "r", encoding="utf-8") as f:
-                    conteudo = f.read().strip()
-                    if conteudo:
-                        return conteudo
-            except:
-                pass
-        return "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"
-
-    def salvar_emails_nuvem(emails_str):
+def carregar_emails_nuvem():
+    if os.path.exists(ARQUIVO_CONFIG_EMAILS):
         try:
-            with open(ARQUIVO_CONFIG_EMAILS, "w", encoding="utf-8") as f:
-                f.write(emails_str)
+            with open(ARQUIVO_CONFIG_EMAILS, "r", encoding="utf-8") as f:
+                conteudo = f.read().strip()
+                if conteudo:
+                    return conteudo
         except:
             pass
+    return "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"
 
-    def carregar_chefes_nuvem():
-        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
-        if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-            try:
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    linhas = [line.strip() for line in f if line.strip()]
-                    if linhas:
-                        chefes_iniciais.extend(linhas)
-            except:
-                pass
-        return sorted(list(set(chefes_iniciais)))
+def salvar_emails_nuvem(emails_str):
+    try:
+        with open(ARQUIVO_CONFIG_EMAILS, "w", encoding="utf-8") as f:
+            f.write(emails_str)
+    except:
+        pass
 
-    def salvar_chefe_nuvem(novo_chefe):
+def carregar_chefes_nuvem():
+    chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if not df_os.empty and 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
+    if os.path.exists(ARQUIVO_CONFIG_CHEFES):
         try:
-            chefes_atuais = []
-            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    chefes_atuais = [line.strip() for line in f if line.strip()]
-            if novo_chefe not in chefes_atuais:
-                chefes_atuais.append(novo_chefe)
+            with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                linhas = [line.strip() for line in f if line.strip()]
+                if linhas:
+                    chefes_iniciais.extend(linhas)
+        except:
+            pass
+    return sorted(list(set(chefes_iniciais)))
+
+def salvar_chefe_nuvem(novo_chefe):
+    try:
+        chefes_atuais = []
+        if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+            with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                chefes_atuais = [line.strip() for line in f if line.strip()]
+        if novo_chefe not in chefes_atuais:
+            chefes_atuais.append(novo_chefe)
+            with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+                f.write("\n".join(chefes_atuais))
+    except:
+        pass
+
+def remover_chefe_nuvem(chefe_para_remover):
+    try:
+        if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+            with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+                chefes_atuais = [line.strip() for line in f if line.strip()]
+            if chefe_para_remover in chefes_atuais:
+                chefes_atuais.remove(chefe_para_remover)
                 with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
                     f.write("\n".join(chefes_atuais))
-        except:
-            pass
+    except:
+        pass
 
-    def remover_chefe_nuvem(chefe_para_remover):
-        try:
-            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    chefes_atuais = [line.strip() for line in f if line.strip()]
-                if chefe_para_remover in chefes_atuais:
-                    chefes_atuais.remove(chefe_para_remover)
-                    with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
-                        f.write("\n".join(chefes_atuais))
-        except:
-            pass
-
+try:
     # ==========================================
     # GESTÃO DO ESTADO DA SESSÃO
     # ==========================================
@@ -202,11 +208,11 @@ try:
     if 'emails_distribuicao' not in st.session_state:
         st.session_state.emails_distribuicao = carregar_emails_nuvem()
 
-    col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
-    col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
-    col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
+    col_cod = 'COD. ATIVIDADE' if not df_os.empty and 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
+    col_desc = 'ATIVIDADE' if not df_os.empty and 'ATIVIDADE' in df_os.columns else (df_os.columns[-1] if not df_os.empty else 'DESCRICAO')
+    col_ativo = 'ATIVO' if not df_os.empty and 'ATIVO' in df_os.columns else (df_os.columns[6] if not df_os.empty and len(df_os.columns) > 6 else 'ATIVO')
 
-    if col_cod in df_os.columns and col_desc in df_os.columns:
+    if not df_os.empty and col_cod in df_os.columns and col_desc in df_os.columns:
         df_unicos = df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
         lista_opcoes_atividades = sorted([f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()])
     else:
@@ -236,7 +242,7 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno (reduzido) com o emoji de cadastro/gestão (➕) ao lado
+    # Linha 3: Chefe de Turno com o emoji de cadastro/gestão (➕) ao lado
     col_chefe_sel, col_btn_plus = st.sidebar.columns([3.2, 0.8])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
@@ -268,7 +274,7 @@ try:
         with col_r_ch:
             chefe_a_remover = st.sidebar.selectbox("Remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean", label_visibility="collapsed")
             if st.sidebar.button("🗑️ Excluir", key="conf_rem_chefe_btn", use_container_width=True):
-                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
+                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if not df_os.empty and 'CHEFE_TURNO' in df_os.columns else []
                 if chefe_a_remover in chefes_base_original:
                     st.sidebar.warning("Impossível remover chefe da base oficial.")
                 else:
@@ -314,7 +320,7 @@ try:
         descricao_atividade = "Atividade Operacional Registrada"
 
     ativo_extraido = "GERAL"
-    if col_cod in df_os.columns and col_ativo in df_os.columns:
+    if not df_os.empty and col_cod in df_os.columns and col_ativo in df_os.columns:
         resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
         if not resultado_sql.empty:
             val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
@@ -383,12 +389,13 @@ try:
 
     # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
     col_dt_final = None
-    for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
-        if c_cand in df_os.columns:
-            col_dt_final = c_cand
-            break
+    if not df_os.empty:
+        for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
+            if c_cand in df_os.columns:
+                col_dt_final = c_cand
+                break
 
-    if col_dt_final:
+    if col_dt_final and not df_os.empty:
         df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
         if not df_os_filtrado.empty:
             with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
@@ -415,19 +422,19 @@ try:
 
     # Função HTML de Impressão com os metadados corretos por turno
     def gerar_html_retrato(df_dados, data_plano):
-        html = """<!DOCTYPE html>
+        html = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Plano de Limpeza Operacional - """ + data_plano + """</title>
+    <title>Plano de Limpeza Operacional - {data_plano}</title>
     <style>
-        @page { size: portrait; margin: 8mm; }
-        body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }
-        .header { border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }
-        .header h1 { margin: 0; font-size: 18px; color: #003366; }
-        .header p { margin: 3px 0 0 0; color: #475569; font-size: 11px; }
-        .bloco-container { margin-top: 15px; page-break-inside: avoid; }
-        .bloco-titulo { 
+        @page {{ size: portrait; margin: 8mm; }}
+        body {{ font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; }}
+        .header {{ border-bottom: 2px solid #003366; padding-bottom: 6mm; margin-bottom: 15px; }}
+        .header h1 {{ margin: 0; font-size: 18px; color: #003366; }}
+        .header p {{ margin: 3px 0 0 0; color: #475569; font-size: 11px; }}
+        .bloco-container {{ margin-top: 15px; page-break-inside: avoid; }}
+        .bloco-titulo {{ 
             background-color: #f1f5f9; 
             padding: 6px 10px; 
             font-size: 12px; 
@@ -437,17 +444,17 @@ try:
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }
-        th { background-color: #003366; color: white; padding: 5px; text-align: left; }
-        td { padding: 4px; border: 1px solid #cbd5e1; }
-        tr:nth-child(even) { background-color: #f8fafc; }
+        }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }}
+        th {{ background-color: #003366; color: white; padding: 5px; text-align: left; }}
+        td {{ padding: 4px; border: 1px solid #cbd5e1; }}
+        tr:nth-child(even) {{ background-color: #f8fafc; }}
     </style>
 </head>
 <body>
     <div class="header">
         <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
-        <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> """ + data_plano + """</p>
+        <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
     </div>"""
         
         if df_dados.empty:
@@ -640,3 +647,21 @@ Atenciosamente,"""
                                 uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
                                 if uid_item:
                                     uids_a_remover.append(uid_item)
+                        
+                        if uids_a_remover:
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            
+                            if selecao_key in st.session_state:
+                                del st.session_state[selecao_key]
+                            st.session_state[selecao_key] = {"selection": {"rows": []}}
+                                
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
+                    else:
+                        st.warning("Selecione pelo menos uma linha na tabela.")
+
+        if not df_turno_atual.empty:
+            df_exibicao = df_turno_atual.copy()
+            if 'UID' not in df_exibicao.columns:
+                df_exib
