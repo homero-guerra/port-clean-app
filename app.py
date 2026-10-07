@@ -97,6 +97,9 @@ def carregar_plano_nuvem():
             if 'UID' not in df_persisted.columns:
                 df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
             
+            if 'Observação' not in df_persisted.columns:
+                df_persisted['Observação'] = ""
+                
             if 'Ativo' in df_persisted.columns:
                 df_persisted['Ativo'] = df_persisted['Ativo'].apply(
                     lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
@@ -116,7 +119,8 @@ def carregar_plano_nuvem():
             "Hora Final": "08:00", 
             "Ativo": "3220TR04", 
             "Retirada NR12": "NÃO", 
-            "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR"
+            "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR",
+            "Observação": ""
         },
         {
             "UID": "UID_2_002",
@@ -129,7 +133,8 @@ def carregar_plano_nuvem():
             "Hora Final": "17:00", 
             "Ativo": "CT08", 
             "Retirada NR12": "NÃO", 
-            "Dados da Atividade": "CONTINUAR RECHEGO NA A4"
+            "Dados da Atividade": "CONTINUAR RECHEGO NA A4",
+            "Observação": ""
         }
     ]
 
@@ -357,7 +362,8 @@ try:
             "Hora Final": hora_fim_form,
             "Ativo": ativo_extraido,
             "Retirada NR12": "NÃO",
-            "Dados da Atividade": descricao_atividade
+            "Dados da Atividade": descricao_atividade,
+            "Observação": ""
         }
         st.session_state.plano_operacional.append(novo_registro)
         salvar_plano_nuvem(st.session_state.plano_operacional)
@@ -373,6 +379,8 @@ try:
         df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
             lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
         )
+    if not df_plano_atual.empty and 'Observação' not in df_plano_atual.columns:
+        df_plano_atual['Observação'] = ""
 
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
     with col_tit_grade:
@@ -422,7 +430,7 @@ try:
 
     data_comum = data_selecionada_filtro
 
-    # Função HTML de Impressão com os metadados corretos por turno
+    # Função HTML de Impressão com os metadados corretos por turno (incluindo Observação)
     def gerar_html_retrato(df_dados, data_plano):
         html = f"""<!DOCTYPE html>
 <html>
@@ -492,12 +500,12 @@ try:
                         </div>
                         <table>
                             <thead>
-                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
+                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th><th>Observação</th></tr>
                             </thead>
                             <tbody>
                     """
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
+                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td><td>{row.get('Observação', '')}</td></tr>"
                     html += "</tbody></table></div>"
                     
         html += """
@@ -707,30 +715,47 @@ Atenciosamente,"""
             df_exibicao = df_turno_atual.copy()
             if 'UID' not in df_exibicao.columns:
                 df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
+            if 'Observação' not in df_exibicao.columns:
+                df_exibicao['Observação'] = ""
                 
             df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
             
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade']
+            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade', 'Observação']
             df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
             
-            st.dataframe(
+            edited_df = st.data_editor(
                 df_final_exibir,
                 use_container_width=True,
                 hide_index=True,
                 selection_mode="disabled" if modo_leitura else "multi-row",
                 on_select="rerun",
                 column_config={
-                    "Nº": st.column_config.NumberColumn("Nº", width="auto"),
-                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", width="auto"),
-                    "Hora Inicial": st.column_config.TextColumn("Hora Inicial", width="auto"),
-                    "Hora Final": st.column_config.TextColumn("Hora Final", width="auto"),
-                    "Ativo": st.column_config.TextColumn("Ativo", width="auto"),
-                    "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="auto"),
-                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="auto"),
+                    "Nº": st.column_config.NumberColumn("Nº", width="small", disabled=True),
+                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", disabled=True),
+                    "Hora Inicial": st.column_config.TextColumn("Hora Inicial", width="small", disabled=True),
+                    "Hora Final": st.column_config.TextColumn("Hora Final", width="small", disabled=True),
+                    "Ativo": st.column_config.TextColumn("Ativo", disabled=True),
+                    "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="small", disabled=True),
+                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", disabled=True),
+                    "Observação": st.column_config.TextColumn("Observação", width="medium", disabled=False if not modo_leitura else True),
                     "UID": None
                 },
                 key=selecao_key
             )
+            
+            # Atualiza a observação no estado e salva na nuvem ao editar
+            if not modo_leitura and 'Observação' in edited_df.columns:
+                changed = False
+                for _, row in edited_df.iterrows():
+                    uid_val = row.get('UID')
+                    obs_val = row.get('Observação', '')
+                    for reg in st.session_state.plano_operacional:
+                        if str(reg.get('UID')) == str(uid_val):
+                            if reg.get('Observação', '') != obs_val:
+                                reg['Observação'] = obs_val
+                                changed = True
+                if changed:
+                    salvar_plano_nuvem(st.session_state.plano_operacional)
         else:
             st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
             
