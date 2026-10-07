@@ -227,7 +227,7 @@ try:
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
     # Linha 1: Data, Hora Inicial e Hora Final alinhados lado a lado
-    col_d, col_h1, col_h2 = st.sidebar.columns([1.1, 1.0, 1.0])
+    col_d, col_h1, col_h2 = st.sidebar.columns([1.2, 1.0, 1.0])
     with col_d:
         data_stamp = st.sidebar.date_input("Data", value=datetime.now().date())
     with col_h1:
@@ -242,8 +242,8 @@ try:
     with col_turno:
         turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    # Linha 3: Chefe de Turno (reduzido) com o botão de gestão (⚙️) ao lado
-    col_chefe_sel, col_btn_gear = st.sidebar.columns([3.3, 0.7])
+    # Linha 3: Chefe de Turno reduzido (cerca de 40% menor) com o botão de gestão (⚙️) alinhado ao lado
+    col_chefe_sel, col_btn_gear = st.sidebar.columns([2.3, 0.7])
     with col_chefe_sel:
         chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
     with col_btn_gear:
@@ -265,7 +265,7 @@ try:
                     if novo_chefe_str not in st.session_state.lista_chefes:
                         st.session_state.lista_chefes.append(novo_chefe_str)
                         salvar_chefe_nuvem(novo_chefe_str)
-                        st.session_state['mostrar_gestao_chefe'] = False  # Fecha o painel ao salvar
+                        st.session_state['mostrar_gestao_chefe'] = False  # Fecha o painel ao salvar com sucesso
                         st.sidebar.success("Salvo com sucesso!")
                         st.rerun()
                     else:
@@ -282,7 +282,7 @@ try:
                     if chefe_a_remover in st.session_state.lista_chefes:
                         st.session_state.lista_chefes.remove(chefe_a_remover)
                         remover_chefe_nuvem(chefe_a_remover)
-                        st.session_state['mostrar_gestao_chefe'] = False  # Fecha o painel ao excluir
+                        st.session_state['mostrar_gestao_chefe'] = False  # Fecha o painel ao excluir com sucesso
                         st.sidebar.success("Removido!")
                         st.rerun()
         st.sidebar.markdown("---")
