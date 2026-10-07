@@ -753,3 +753,23 @@ Atenciosamente,"""
                     if linhas_selecionadas_idx:
                         uids_a_remover = []
                         for idx_sel in linhas_selecionadas_idx:
+                            if idx_sel < len(df_turno_atual):
+                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
+                                if uid_item:
+                                    uids_a_remover.append(uid_item)
+                        
+                        if uids_a_remover:
+                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
+                            salvar_plano_nuvem(st.session_state.plano_operacional)
+                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
+                            st.rerun()
+                    else:
+                        st.warning("Selecione pelo menos uma linha na tabela.")
+
+        if df_turno_atual.empty:
+            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+
+except Exception as e:
+    st.error(f"Erro ao carregar o sistema: {e}")
