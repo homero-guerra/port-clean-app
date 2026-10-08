@@ -48,7 +48,7 @@ st.markdown("""
 # Título principal atualizado
 st.markdown("<h1>Plano de Limpeza Operacional</h1>", unsafe_allow_html=True)
 
-# Função para carregar e processar os dados com segurança e deteção de delimitador
+# Função para carregar e processar os dados com segurança e detecção de delimitador
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
     try:
@@ -89,6 +89,8 @@ try:
                     df_persisted['Ativo'] = df_persisted['Ativo'].apply(
                         lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
                     )
+                if 'Observacao' not in df_persisted.columns:
+                    df_persisted['Observacao'] = ""
                 return df_persisted.to_dict(orient='records')
             except:
                 pass
@@ -104,20 +106,8 @@ try:
                 "Hora Final": "08:00", 
                 "Ativo": "3220TR04", 
                 "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR"
-            },
-            {
-                "UID": "UID_2_002",
-                "TURMA": "BRANCA", 
-                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
-                "TURNO": "ADM", 
-                "DATA": datetime.now().strftime('%d/%m/%Y'), 
-                "Cód. Atividade": "CT08.4",
-                "Hora Inicial": "08:00", 
-                "Hora Final": "17:00", 
-                "Ativo": "CT08", 
-                "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "CONTINUAR RECHEGO NA A4"
+                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR",
+                "Observacao": ""
             }
         ]
 
@@ -202,11 +192,10 @@ try:
     else:
         lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
 
-    # Lista de horários de 1 em 1 hora
     lista_horarios = [f"{h:02d}:00" for h in range(24)]
 
     # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO, CALENDÁRIO PROPORCIONAL E BOTÃO DE IMPRESSÃO
+    # ÁREA PRINCIPAL: TÍTULO E GRADE
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
@@ -230,7 +219,6 @@ try:
     if modo_leitura:
         st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registros de datas anteriores ficam em consulta protegida.")
 
-    # Consulta na base oficial do GitHub (SUPERSAN.csv) utilizando estritamente a coluna Data Final
     col_dt_final = None
     for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
         if c_cand in df_os.columns:
@@ -243,7 +231,6 @@ try:
             with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
                 st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
 
-    # Extrair metadados específicos para cada Turno individualmente
     df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
     if not df_diurno_ref.empty:
         turma_diurno = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
@@ -271,9 +258,9 @@ try:
     data_comum = data_selecionada_filtro
 
     # ==========================================
-    # FUNÇÃO HTML DE IMPRESSÃO (LAYOUT LANDSCAPE / PAISAGEM)
+    # FUNÇÃO HTML DE IMPRESSÃO (LAYOUT RETRATO - 2 PÁGINAS POR FOLHA)
     # ==========================================
-    def gerar_html_paisagem(df_dados, data_plano):
+    def gerar_html_retrato(df_dados, data_plano):
         df_d_p = df_dados[df_dados['DATA'] == data_plano]
         tem_adm = not df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == "ADM"].empty
 
@@ -284,28 +271,29 @@ try:
             <meta charset="utf-8">
             <title>Plano de Limpeza Operacional - {data_plano}</title>
             <style>
-                @page {{ size: landscape; margin: 6mm; }}
+                @page {{ size: portrait; margin: 8mm; }}
                 body {{ font-family: Arial, sans-serif; color: #000000; margin: 0; padding: 5px; }}
-                .header {{ border-bottom: 2px solid #000000; padding-bottom: 4mm; margin-bottom: 10px; }}
-                .header h1 {{ margin: 0; font-size: 16px; color: #000000; font-weight: bold; }}
-                .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 10px; }}
-                .bloco-container {{ margin-top: 10px; page-break-inside: avoid; }}
+                .header {{ border-bottom: 2px solid #000000; padding-bottom: 3mm; margin-bottom: 8px; }}
+                .header h1 {{ margin: 0; font-size: 14px; color: #000000; font-weight: bold; }}
+                .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 9px; }}
+                .bloco-container {{ margin-top: 8px; page-break-inside: avoid; }}
                 .page-break {{ page-break-before: always; }}
                 .bloco-titulo {{ 
                     background-color: #f1f5f9; 
-                    padding: 8px 12px; 
-                    font-size: 14px; 
+                    padding: 6px 10px; 
+                    font-size: 12px; 
                     font-weight: bold; 
                     color: #000000; 
-                    border-left: 5px solid #000000; 
+                    border-left: 4px solid #000000; 
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                 }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 9px; color: #000000; }}
-                th {{ background-color: #e2e8f0; color: #000000; padding: 4px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 8.5px; color: #000000; }}
+                th {{ background-color: #e2e8f0; color: #000000; padding: 3px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
                 td {{ padding: 3px; border: 1px solid #000000; color: #000000; }}
                 tr:nth-child(even) {{ background-color: #ffffff; }}
+                .obs-bloco {{ margin-top: 3px; font-size: 8.5px; font-style: italic; color: #333333; }}
             </style>
         </head>
         <body>
@@ -338,16 +326,12 @@ try:
                 d_info = data_plano
 
                 if not df_t.empty:
-                    # Se houver ADM e formos imprimir o NOTURNO, aplica quebra de página para o verso
-                    if codigo_turno == "NOTURNO" and tem_adm:
-                        html += '<div class="page-break"></div>'
-
                     html += f"""
                     <div class="bloco-container">
                         <div class="bloco-titulo">
                             <span>{titulo_turno}</span>
-                            <span style="font-size: 11px; font-weight: normal; color: #000000;">
-                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info} &nbsp;|&nbsp; 📅 <b>Data:</b> {d_info}
+                            <span style="font-size: 9.5px; font-weight: normal; color: #000000;">
+                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info}
                             </span>
                         </div>
                         <table>
@@ -358,7 +342,15 @@ try:
                     """
                     for idx, (_, row) in enumerate(df_t.iterrows(), 1):
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
-                    html += "</tbody></table></div>"
+                    html += "</tbody></table>"
+                    
+                    # Renderizar observações se existirem preenchidas no turno
+                    obs_unicas = df_t['Observacao'].dropna().unique()
+                    obs_texto = " | ".join([str(o) for o in obs_unicas if str(o).strip()])
+                    if obs_texto:
+                        html += f'<div class="obs-bloco"><b>Observação:</b> {obs_texto}</div>'
+                    
+                    html += "</div>"
                     
         html += """
             <script>
@@ -376,7 +368,7 @@ try:
             timestamp_str = datetime.now().strftime("%d%m%H%M")
             nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
             
-            html_para_download = gerar_html_paisagem(df_plano_atual, data_selecionada_filtro)
+            html_para_download = gerar_html_retrato(df_plano_atual, data_selecionada_filtro)
             b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
             
             st.markdown(
@@ -407,7 +399,7 @@ try:
     """, unsafe_allow_html=True)
 
     # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM COM CALLBACK
+    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM
     # ==========================================
     col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
     with col_lbl_dist:
@@ -448,30 +440,35 @@ Atenciosamente,"""
     st.markdown("---")
 
     # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO
+    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO (LINHAS REORGANIZADAS)
     # ==========================================
     st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
     data_stamp = data_pesquisa_obj
 
-    col_h1, col_h2 = st.sidebar.columns([1.0, 1.0])
-    with col_h1:
-        hora_ini_form = st.sidebar.selectbox("Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini")
-    with col_h2:
-        hora_fim_form = st.sidebar.selectbox("Hora Final", options=lista_horarios, index=8, key="sel_h_fim")
+    # Linha 1 - Data, Hora Inicial, Hora Final alinhados lado a lado
+    col_l1_1, col_l1_2, col_l1_3 = st.sidebar.columns(3)
+    with col_l1_1:
+        st.text_input("Data", value=data_stamp.strftime('%d/%m/%Y'), disabled=True, key="sidebar_data_f")
+    with col_l1_2:
+        hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini")
+    with col_l1_3:
+        hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8, key="sel_h_fim")
         
-    col_turma, col_turno = st.sidebar.columns([1, 1])
-    with col_turma:
-        turma_form = st.sidebar.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
-    with col_turno:
-        turno_form = st.sidebar.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
+    # Linha 2 - Turma/Equipe, Turno alinhados lado a lado
+    col_l2_1, col_l2_2 = st.sidebar.columns(2)
+    with col_l2_1:
+        turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
+    with col_l2_2:
+        turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
 
-    col_chefe_sel, col_btn_gear = st.sidebar.columns([2.3, 0.7])
-    with col_chefe_sel:
-        chefe_form = st.sidebar.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
-    with col_btn_gear:
+    # Linha 3 - Chefe de Turno e Configuração de chefes alinhados lado a lado
+    col_l3_1, col_l3_2 = st.sidebar.columns([3, 1])
+    with col_l3_1:
+        chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
+    with col_l3_2:
         st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
-        if st.sidebar.button("⚙️", key="btn_cad_chefe", help="Gerenciar Chefes"):
+        if st.button("⚙️", key="btn_cad_chefe", help="Gerenciar Chefes", use_container_width=True):
             st.session_state['mostrar_gestao_chefe'] = not st.session_state.get('mostrar_gestao_chefe', False)
 
     if st.session_state.get('mostrar_gestao_chefe', False):
@@ -525,7 +522,6 @@ Atenciosamente,"""
     </style>
     """
     st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
-
     st.sidebar.markdown("---")
     
     opcao_selecionada = st.sidebar.selectbox(
@@ -535,6 +531,10 @@ Atenciosamente,"""
         placeholder="Digite para pesquisar...",
         key="sel_atividade_main"
     )
+
+    # Inclusão do campo "Observação" logo abaixo do aviso textual do campo Selecione o COD. ATIVIDADE
+    st.sidebar.markdown("<div style='font-size: 11.5px; color: #5c6d76; margin-top: -6px; margin-bottom: 6px;'>⚠️ Certifique-se de selecionar o código correto correspondente à atividade operacional vigente.</div>", unsafe_allow_html=True)
+    observacao_atividade = st.sidebar.text_area("Observação da Atividade", placeholder="Digite observações complementares...", key="obs_atividade_input")
 
     if " - " in opcao_selecionada:
         cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
@@ -577,7 +577,8 @@ Atenciosamente,"""
             "Hora Final": hora_fim_form,
             "Ativo": ativo_extraido,
             "Retirada NR12": "NÃO",
-            "Dados da Atividade": descricao_atividade
+            "Dados da Atividade": descricao_atividade,
+            "Observacao": observacao_atividade
         }
         st.session_state.plano_operacional.append(novo_registro)
         salvar_plano_nuvem(st.session_state.plano_operacional)
