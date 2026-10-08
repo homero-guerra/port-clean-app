@@ -1,15 +1,12 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime, date
+import base64
+from datetime import date, datetime
 import os
 import urllib.parse
-import base64
+import pandas as pd
+import streamlit as st
 
 # Configuração da página atualizada (título limpo e sem ícone)
-st.set_page_config(
-    page_title="Plano de Limpeza",
-    layout="wide"
-)
+st.set_page_config(page_title="Plano de Limpeza", layout="wide")
 
 # Mapa de cores oficial das equipes/turmas
 mapa_cores = {
@@ -17,11 +14,12 @@ mapa_cores = {
     "BRANCA": "#F5F5F5",
     "VERDE": "#32CD32",
     "AZUL": "#1E90FF",
-    "ADM": "#A9A9A9"
+    "ADM": "#A9A9A9",
 }
 
 # Estilização CSS geral para refinamento visual do painel e padronização de botões
-st.markdown("""
+st.markdown(
+    """
 <style>
     /* Remover espaçamento superior da barra lateral */
     [data-testid="stSidebar"] {
@@ -43,348 +41,463 @@ st.markdown("""
         font-weight: bold;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Título principal atualizado
 st.markdown("<h1>Plano de Limpeza Operacional</h1>", unsafe_allow_html=True)
 
+ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
+ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
+ARQUIVO_CONFIG_CHEFES = "config_chefes_nuvem.txt"
+
+
 # Função para carregar e processar os dados com segurança e detecção de delimitador
 @st.cache_data
 def carregar_e_processar_dados(caminho_arquivo):
+  try:
+    df = pd.read_csv(caminho_arquivo, sep=";", encoding="utf-8", low_memory=False)
+    if len(df.columns) <= 1:
+      df = pd.read_csv(
+          caminho_arquivo, sep=",", encoding="utf-8", low_memory=False
+      )
+  except:
+    df = pd.read_csv(
+        caminho_arquivo, sep=None, engine="python", encoding="utf-8"
+    )
+
+  df.columns = df.columns.str.strip()
+
+  # Converter colunas de data candidatas a Data Final para datetime
+  colunas_data_final = ["DATA_FINAL_DT", "DATA_FINAL", "DT_FINAL", "DATA FINAL"]
+  for c_dt in colunas_data_final:
+    if c_dt in df.columns:
+      df[c_dt] = pd.to_datetime(df[c_dt], errors="coerce")
+
+  return df
+
+
+def carregar_plano_nuvem():
+  if os.path.exists(ARQUIVO_BANCO_DADOS):
     try:
-        df = pd.read_csv(caminho_arquivo, sep=';', encoding='utf-8', low_memory=False)
-        if len(df.columns) <= 1:
-            df = pd.read_csv(caminho_arquivo, sep=',', encoding='utf-8', low_memory=False)
-    except:
-        df = pd.read_csv(caminho_arquivo, sep=None, engine='python', encoding='utf-8')
-        
-    df.columns = df.columns.str.strip()
-        
-    # Converter colunas de data candidatas a Data Final para datetime
-    colunas_data_final = ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']
-    for c_dt in colunas_data_final:
-        if c_dt in df.columns:
-            df[c_dt] = pd.to_datetime(df[c_dt], errors='coerce')
-            
-    return df
-
-try:
-    df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
-
-    # ==========================================
-    # PERSISTÊNCIA EM NUVEM (FICHEIROS DE DADOS E CONFIGURAÇÕES)
-    # ==========================================
-    ARQUIVO_BANCO_DADOS = "plano_operacional_nuvem.csv"
-    ARQUIVO_CONFIG_EMAILS = "config_emails_nuvem.txt"
-    ARQUIVO_CONFIG_CHEFES = "config_chefes_nuvem.txt"
-
-    def carregar_plano_nuvem():
-        if os.path.exists(ARQUIVO_BANCO_DADOS):
-            try:
-                df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding='utf-8')
-                if 'UID' not in df_persisted.columns:
-                    df_persisted['UID'] = [f"UID_{i}_{int(datetime.now().timestamp())}" for i in range(len(df_persisted))]
-                
-                if 'Ativo' in df_persisted.columns:
-                    df_persisted['Ativo'] = df_persisted['Ativo'].apply(
-                        lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
-                    )
-                if 'Observacao' not in df_persisted.columns:
-                    df_persisted['Observacao'] = ""
-                return df_persisted.to_dict(orient='records')
-            except:
-                pass
-        return [
-            {
-                "UID": "UID_1_001",
-                "TURMA": "AMARELA", 
-                "CHEFE DE TURNO": "20000000 - GERSON FUENTES", 
-                "TURNO": "DIURNO", 
-                "DATA": datetime.now().strftime('%d/%m/%Y'), 
-                "Cód. Atividade": "3220TR04.3",
-                "Hora Inicial": "07:00", 
-                "Hora Final": "08:00", 
-                "Ativo": "3220TR04", 
-                "Retirada NR12": "NÃO", 
-                "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR",
-                "Observacao": ""
-            }
+      df_persisted = pd.read_csv(ARQUIVO_BANCO_DADOS, encoding="utf-8")
+      if "UID" not in df_persisted.columns:
+        df_persisted["UID"] = [
+            f"UID_{i}_{int(datetime.now().timestamp())}"
+            for i in range(len(df_persisted))
         ]
 
-    def salvar_plano_nuvem(lista_registros):
-        df_to_save = pd.DataFrame(lista_registros)
-        df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding='utf-8')
-
-    def carregar_emails_nuvem():
-        if os.path.exists(ARQUIVO_CONFIG_EMAILS):
-            try:
-                with open(ARQUIVO_CONFIG_EMAILS, "r", encoding="utf-8") as f:
-                    conteudo = f.read().strip()
-                    if conteudo:
-                        return conteudo
-            except:
-                pass
-        return "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br, gerencia.operacional@ferroport.com.br"
-
-    def salvar_emails_nuvem(emails_str):
-        try:
-            with open(ARQUIVO_CONFIG_EMAILS, "w", encoding="utf-8") as f:
-                f.write(emails_str)
-        except:
-            pass
-
-    def carregar_chefes_nuvem():
-        chefes_iniciais = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else ["20000000 - GERSON FUENTES", "20005373 - TEMISTOCLES SANTANA"]
-        if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-            try:
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    linhas = [line.strip() for line in f if line.strip()]
-                    if linhas:
-                        chefes_iniciais.extend(linhas)
-            except:
-                pass
-        return sorted(list(set(chefes_iniciais)))
-
-    def salvar_chefe_nuvem(novo_chefe):
-        try:
-            chefes_atuais = []
-            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    chefes_atuais = [line.strip() for line in f if line.strip()]
-            if novo_chefe not in chefes_atuais:
-                chefes_atuais.append(novo_chefe)
-                with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
-                    f.write("\n".join(chefes_atuais))
-        except:
-            pass
-
-    def remover_chefe_nuvem(chefe_para_remover):
-        try:
-            if os.path.exists(ARQUIVO_CONFIG_CHEFES):
-                with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
-                    chefes_atuais = [line.strip() for line in f if line.strip()]
-                if chefe_para_remover in chefes_atuais:
-                    chefes_atuais.remove(chefe_para_remover)
-                    with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
-                        f.write("\n".join(chefes_atuais))
-        except:
-            pass
-
-    # ==========================================
-    # GESTÃO DO ESTADO DA SESSÃO
-    # ==========================================
-    if 'lista_chefes' not in st.session_state:
-        st.session_state.lista_chefes = carregar_chefes_nuvem()
-
-    if 'plano_operacional' not in st.session_state:
-        st.session_state.plano_operacional = carregar_plano_nuvem()
-
-    if 'emails_distribuicao' not in st.session_state:
-        st.session_state.emails_distribuicao = carregar_emails_nuvem()
-
-    col_cod = 'COD. ATIVIDADE' if 'COD. ATIVIDADE' in df_os.columns else 'COD_ATIVIDADE'
-    col_desc = 'ATIVIDADE' if 'ATIVIDADE' in df_os.columns else df_os.columns[-1]
-    col_ativo = 'ATIVO' if 'ATIVO' in df_os.columns else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
-
-    if col_cod in df_os.columns and col_desc in df_os.columns:
-        df_unicos = df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
-        lista_opcoes_atividades = sorted([f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()])
-    else:
-        lista_opcoes_atividades = ["3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02", "CT08.4 - CONTINUAR RECHEGO NA A4"]
-
-    lista_horarios = [f"{h:02d}:00" for h in range(24)]
-
-    # ==========================================
-    # ÁREA PRINCIPAL: TÍTULO E GRADE
-    # ==========================================
-    df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
-    
-    if not df_plano_atual.empty:
-        if 'Ativo' in df_plano_atual.columns:
-            df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
-                lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+      if "Ativo" in df_persisted.columns:
+        df_persisted["Ativo"] = df_persisted["Ativo"].apply(
+            lambda x: (
+                "GERAL"
+                if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]
+                else x
             )
-        if 'Observacao' not in df_plano_atual.columns:
-            df_plano_atual['Observacao'] = ""
+        )
+      if "Observacao" not in df_persisted.columns:
+        df_persisted["Observacao"] = ""
+      return df_persisted.to_dict(orient="records")
+    except:
+      pass
+  return [{
+      "UID": "UID_1_001",
+      "TURMA": "AMARELA",
+      "CHEFE DE TURNO": "20000000 - GERSON FUENTES",
+      "TURNO": "DIURNO",
+      "DATA": datetime.now().strftime("%d/%m/%Y"),
+      "Cód. Atividade": "3220TR04.3",
+      "Hora Inicial": "07:00",
+      "Hora Final": "08:00",
+      "Ativo": "3220TR04",
+      "Retirada NR12": "NÃO",
+      "Dados da Atividade": "LAVAGEM DA MOTORIZAÇÃO DA TR",
+      "Observacao": "",
+  }]
 
-    col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
-    with col_tit_grade:
-        st.markdown("### 📋 Grade de Planejamento Diário")
-    with col_filtro_grade:
-        data_pesquisa_obj = st.date_input("🔍 Consultar Plano por Data", value=datetime.now().date(), label_visibility="collapsed")
-        data_selecionada_filtro = data_pesquisa_obj.strftime('%d/%m/%Y')
 
-    df_filtrado_data = df_plano_atual[df_plano_atual['DATA'] == data_selecionada_filtro] if not df_plano_atual.empty else pd.DataFrame()
+def salvar_plano_nuvem(lista_registros):
+  df_to_save = pd.DataFrame(lista_registros)
+  df_to_save.to_csv(ARQUIVO_BANCO_DADOS, index=False, encoding="utf-8")
 
-    data_hoje_str = datetime.now().strftime('%d/%m/%Y')
-    modo_leitura = (data_selecionada_filtro != data_hoje_str)
 
-    if modo_leitura:
-        st.info(f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os registros de datas anteriores ficam em consulta protegida.")
+def carregar_emails_nuvem():
+  if os.path.exists(ARQUIVO_CONFIG_EMAILS):
+    try:
+      with open(ARQUIVO_CONFIG_EMAILS, "r", encoding="utf-8") as f:
+        conteudo = f.read().strip()
+        if conteudo:
+          return conteudo
+    except:
+      pass
+  return (
+      "operacao.limpeza@ferroport.com.br, supervisao.pcp@ferroport.com.br,"
+      " gerencia.operacional@ferroport.com.br"
+  )
 
-    col_dt_final = None
-    for c_cand in ['DATA_FINAL_DT', 'DATA_FINAL', 'DT_FINAL', 'DATA FINAL']:
-        if c_cand in df_os.columns:
-            col_dt_final = c_cand
-            break
 
-    if col_dt_final:
-        df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
-        if not df_os_filtrado.empty:
-            with st.expander(f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final: {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens", expanded=False):
-                st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
+def salvar_emails_nuvem(emails_str):
+  try:
+    with open(ARQUIVO_CONFIG_EMAILS, "w", encoding="utf-8") as f:
+      f.write(emails_str)
+  except:
+    pass
 
-    df_diurno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "DIURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_diurno_ref.empty:
-        turma_diurno = str(df_diurno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_diurno = str(df_diurno_ref.iloc[-1].get('CHEFE_TURNO', df_diurno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
+
+def carregar_chefes_nuvem(df_os):
+  chefes_iniciais = (
+      df_os["CHEFE_TURNO"].dropna().unique().tolist()
+      if "CHEFE_TURNO" in df_os.columns
+      else [
+          "20000000 - GERSON FUENTES",
+          "20005373 - TEMISTOCLES SANTANA",
+      ]
+  )
+  if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+    try:
+      with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+        linhas = [line.strip() for line in f if line.strip()]
+        if linhas:
+          chefes_iniciais.extend(linhas)
+    except:
+      pass
+  return sorted(list(set(chefes_iniciais)))
+
+
+def salvar_chefe_nuvem(novo_chefe):
+  try:
+    chefes_atuais = []
+    if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+      with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+        chefes_atuais = [line.strip() for line in f if line.strip()]
+    if novo_chefe not in chefes_atuais:
+      chefes_atuais.append(novo_chefe)
+      with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+        f.write("\n".join(chefes_atuais))
+  except:
+    pass
+
+
+def remover_chefe_nuvem(chefe_para_remover):
+  try:
+    if os.path.exists(ARQUIVO_CONFIG_CHEFES):
+      with open(ARQUIVO_CONFIG_CHEFES, "r", encoding="utf-8") as f:
+        chefes_atuais = [line.strip() for line in f if line.strip()]
+      if chefe_para_remover in chefes_atuais:
+        chefes_atuais.remove(chefe_para_remover)
+        with open(ARQUIVO_CONFIG_CHEFES, "w", encoding="utf-8") as f:
+          f.write("\n".join(chefes_atuais))
+  except:
+    pass
+
+
+def gerar_html_retrato(
+    df_dados,
+    data_plano,
+    turma_adm,
+    chefe_adm,
+    turma_diurno,
+    chefe_diurno,
+    turma_noturno,
+    chefe_noturno,
+):
+  df_d_p = df_dados[df_dados["DATA"] == data_plano]
+
+  html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Plano de Limpeza Operacional - {data_plano}</title>
+        <style>
+            @page {{ size: portrait; margin: 8mm; }}
+            body {{ font-family: Arial, sans-serif; color: #000000; margin: 0; padding: 5px; }}
+            .header {{ border-bottom: 2px solid #000000; padding-bottom: 3mm; margin-bottom: 8px; }}
+            .header h1 {{ margin: 0; font-size: 14px; color: #000000; font-weight: bold; }}
+            .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 9px; }}
+            .bloco-container {{ margin-top: 8px; page-break-inside: avoid; }}
+            .bloco-titulo {{ 
+                background-color: #f1f5f9; 
+                padding: 6px 10px; 
+                font-size: 12px; 
+                font-weight: bold; 
+                color: #000000; 
+                border-left: 4px solid #000000; 
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 8.5px; color: #000000; }}
+            th {{ background-color: #e2e8f0; color: #000000; padding: 3px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
+            td {{ padding: 3px; border: 1px solid #000000; color: #000000; }}
+            tr:nth-child(even) {{ background-color: #ffffff; }}
+            .obs-bloco {{ margin-top: 3px; font-size: 8.5px; font-style: italic; color: #333333; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
+            <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
+        </div>
+    """
+
+  if df_d_p.empty:
+    html += "<p>Nenhuma atividade registada para esta data.</p>"
+  else:
+    turnos_html = [
+        ("DIURNO", "Turno Diurno"),
+        ("ADM", "Turno ADM"),
+        ("NOTURNO", "Turno Noturno"),
+    ]
+    for codigo_turno, titulo_turno in turnos_html:
+      df_t = df_d_p[
+          df_d_p["TURNO"].astype(str).str.strip().str.upper() == codigo_turno
+      ]
+
+      if codigo_turno == "ADM":
+        t_info, c_info = turma_adm, chefe_adm
+      elif codigo_turno == "DIURNO":
+        t_info, c_info = turma_diurno, chefe_diurno
+      else:
+        t_info, c_info = turma_noturno, chefe_noturno
+
+      if not df_t.empty:
+        html += f"""
+                <div class="bloco-container">
+                    <div class="bloco-titulo">
+                        <span>{titulo_turno}</span>
+                        <span style="font-size: 9.5px; font-weight: normal; color: #000000;">
+                            👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info}
+                        </span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
+                        </thead>
+                        <tbody>
+                """
+        for idx, (_, row) in enumerate(df_t.iterrows(), 1):
+          html += (
+              f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
+          )
+        html += "</tbody></table>"
+
+        if "Observacao" in df_t.columns:
+          obs_unicas = df_t["Observacao"].dropna().unique()
+          obs_texto = " | ".join([str(o) for o in obs_unicas if str(o).strip()])
+          if obs_texto:
+            html += f'<div class="obs-bloco"><b>Observação:</b> {obs_texto}</div>'
+
+        html += "</div>"
+
+  html += """
+        <script>
+            window.onload = function() { 
+                window.print(); 
+            }
+        </script>
+    </body>
+    </html>
+    """
+  return html
+
+
+try:
+  df_os = carregar_e_processar_dados("Relatorio OS PCP Sistema - SUPERSAN.csv")
+
+  # ==========================================
+  # GESTÃO DO ESTADO DA SESSÃO
+  # ==========================================
+  if "lista_chefes" not in st.session_state:
+    st.session_state.lista_chefes = carregar_chefes_nuvem(df_os)
+
+  if "plano_operacional" not in st.session_state:
+    st.session_state.plano_operacional = carregar_plano_nuvem()
+
+  if "emails_distribuicao" not in st.session_state:
+    st.session_state.emails_distribuicao = carregar_emails_nuvem()
+
+  col_cod = (
+      "COD. ATIVIDADE" if "COD. ATIVIDADE" in df_os.columns else "COD_ATIVIDADE"
+  )
+  col_desc = "ATIVIDADE" if "ATIVIDADE" in df_os.columns else df_os.columns[-1]
+  col_ativo = (
+      "ATIVO"
+      if "ATIVO" in df_os.columns
+      else (df_os.columns[6] if len(df_os.columns) > 6 else df_os.columns[0])
+  )
+
+  if col_cod in df_os.columns and col_desc in df_os.columns:
+    df_unicos = (
+        df_os[[col_cod, col_desc]].dropna().drop_duplicates(subset=[col_cod])
+    )
+    lista_opcoes_atividades = sorted([
+        f"{row[col_cod]} - {row[col_desc]}" for _, row in df_unicos.iterrows()
+    ])
+  else:
+    lista_opcoes_atividades = [
+        "3230TR02.1 - LAVAGEM DA ESTRUTURA DA CALDA DA 3230TR02",
+        "CT08.4 - CONTINUAR RECHEGO NA A4",
+    ]
+
+  lista_horarios = [f"{h:02d}:00" for h in range(24)]
+
+  # ==========================================
+  # ÁREA PRINCIPAL: TÍTULO E GRADE
+  # ==========================================
+  df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
+
+  if not df_plano_atual.empty:
+    if "Ativo" in df_plano_atual.columns:
+      df_plano_atual["Ativo"] = df_plano_atual["Ativo"].apply(
+          lambda x: (
+              "GERAL"
+              if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]
+              else x
+          )
+      )
+    if "Observacao" not in df_plano_atual.columns:
+      df_plano_atual["Observacao"] = ""
+
+  col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns(
+      [3.2, 1.6, 2.2, 1.0]
+  )
+  with col_tit_grade:
+    st.markdown("### 📋 Grade de Planejamento Diário")
+  with col_filtro_grade:
+    data_pesquisa_obj = st.date_input(
+        "🔍 Consultar Plano por Data",
+        value=datetime.now().date(),
+        label_visibility="collapsed",
+    )
+    data_selecionada_filtro = data_pesquisa_obj.strftime("%d/%m/%Y")
+
+  df_filtrado_data = (
+      df_plano_atual[df_plano_atual["DATA"] == data_selecionada_filtro]
+      if not df_plano_atual.empty
+      else pd.DataFrame()
+  )
+
+  data_hoje_str = datetime.now().strftime("%d/%m/%Y")
+  modo_leitura = data_selecionada_filtro != data_hoje_str
+
+  if modo_leitura:
+    st.info(
+        f"🔒 **Modo Leitura Ativado** para a data {data_selecionada_filtro}. Os"
+        " registros de datas anteriores ficam em consulta protegida."
+    )
+
+  col_dt_final = None
+  for c_cand in ["DATA_FINAL_DT", "DATA_FINAL", "DT_FINAL", "DATA FINAL"]:
+    if c_cand in df_os.columns:
+      col_dt_final = c_cand
+      break
+
+  if col_dt_final:
+    df_os_filtrado = df_os[df_os[col_dt_final].dt.date == data_pesquisa_obj]
+    if not df_os_filtrado.empty:
+      with st.expander(
+          f"📂 Ver Registros da Base SUPERSAN (Filtrado por Data Final:"
+          f" {data_selecionada_filtro}) — {len(df_os_filtrado)} ordens",
+          expanded=False,
+      ):
+        st.dataframe(df_os_filtrado, use_container_width=True, hide_index=True)
+
+  df_diurno_ref = (
+      df_filtrado_data[
+          df_filtrado_data["TURNO"].astype(str).str.strip().str.upper()
+          == "DIURNO"
+      ]
+      if not df_filtrado_data.empty
+      else pd.DataFrame()
+  )
+  if not df_diurno_ref.empty:
+    turma_diurno = (
+        str(df_diurno_ref.iloc[-1].get("TURMA", "AMARELA")).strip().upper()
+    )
+    chefe_diurno = str(
+        df_diurno_ref.iloc[-1].get(
+            "CHEFE_TURNO", df_diurno_ref.iloc[-1].get("CHEFE DE TURNO", "N/D")
+        )
+    )
+  else:
+    turma_diurno = "AMARELA"
+    chefe_diurno = "20000000 - GERSON FUENTES"
+
+  df_adm_ref = (
+      df_filtrado_data[
+          df_filtrado_data["TURNO"].astype(str).str.strip().str.upper() == "ADM"
+      ]
+      if not df_filtrado_data.empty
+      else pd.DataFrame()
+  )
+  if not df_adm_ref.empty:
+    turma_adm = str(df_adm_ref.iloc[-1].get("TURMA", "ADM")).strip().upper()
+    chefe_adm = str(
+        df_adm_ref.iloc[-1].get(
+            "CHEFE_TURNO", df_adm_ref.iloc[-1].get("CHEFE DE TURNO", "N/D")
+        )
+    )
+  else:
+    turma_adm = "ADM"
+    chefe_adm = "20000000 - GERSON FUENTES"
+
+  df_noturno_ref = (
+      df_filtrado_data[
+          df_filtrado_data["TURNO"].astype(str).str.strip().str.upper()
+          == "NOTURNO"
+      ]
+      if not df_filtrado_data.empty
+      else pd.DataFrame()
+  )
+  if not df_noturno_ref.empty:
+    turma_noturno = (
+        str(df_noturno_ref.iloc[-1].get("TURMA", "AMARELA")).strip().upper()
+    )
+    chefe_noturno = str(
+        df_noturno_ref.iloc[-1].get(
+            "CHEFE_TURNO", df_noturno_ref.iloc[-1].get("CHEFE DE TURNO", "N/D")
+        )
+    )
+  else:
+    turma_noturno = "AMARELA"
+    chefe_noturno = "20000000 - GERSON FUENTES"
+
+  data_comum = data_selecionada_filtro
+
+  with col_down_grade:
+    if not df_filtrado_data.empty:
+      timestamp_str = datetime.now().strftime("%d%m%H%M")
+      nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
+
+      html_para_download = gerar_html_retrato(
+          df_plano_atual,
+          data_selecionada_filtro,
+          turma_adm,
+          chefe_adm,
+          turma_diurno,
+          chefe_diurno,
+          turma_noturno,
+          chefe_noturno,
+      )
+      b64_down = base64.b64encode(html_para_download.encode("utf-8")).decode()
+
+      st.markdown(
+          f"""
+            <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
+                <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
+                    🖨️ Imprimir
+                </button>
+            </a>
+            """,
+          unsafe_allow_html=True,
+      )
     else:
-        turma_diurno = "AMARELA"
-        chefe_diurno = "20000000 - GERSON FUENTES"
+      st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
 
-    df_adm_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "ADM"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_adm_ref.empty:
-        turma_adm = str(df_adm_ref.iloc[-1].get('TURMA', 'ADM')).strip().upper()
-        chefe_adm = str(df_adm_ref.iloc[-1].get('CHEFE_TURNO', df_adm_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-    else:
-        turma_adm = "ADM"
-        chefe_adm = "20000000 - GERSON FUENTES"
-
-    df_noturno_ref = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == "NOTURNO"] if not df_filtrado_data.empty else pd.DataFrame()
-    if not df_noturno_ref.empty:
-        turma_noturno = str(df_noturno_ref.iloc[-1].get('TURMA', 'AMARELA')).strip().upper()
-        chefe_noturno = str(df_noturno_ref.iloc[-1].get('CHEFE_TURNO', df_noturno_ref.iloc[-1].get('CHEFE DE TURNO', 'N/D')))
-    else:
-        turma_noturno = "AMARELA"
-        chefe_noturno = "20000000 - GERSON FUENTES"
-
-    data_comum = data_selecionada_filtro
-
-    # ==========================================
-    # FUNÇÃO HTML DE IMPRESSÃO (LAYOUT RETRATO - 2 PÁGINAS POR FOLHA)
-    # ==========================================
-    def gerar_html_retrato(df_dados, data_plano):
-        df_d_p = df_dados[df_dados['DATA'] == data_plano]
-
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Plano de Limpeza Operacional - {data_plano}</title>
-            <style>
-                @page {{ size: portrait; margin: 8mm; }}
-                body {{ font-family: Arial, sans-serif; color: #000000; margin: 0; padding: 5px; }}
-                .header {{ border-bottom: 2px solid #000000; padding-bottom: 3mm; margin-bottom: 8px; }}
-                .header h1 {{ margin: 0; font-size: 14px; color: #000000; font-weight: bold; }}
-                .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 9px; }}
-                .bloco-container {{ margin-top: 8px; page-break-inside: avoid; }}
-                .bloco-titulo {{ 
-                    background-color: #f1f5f9; 
-                    padding: 6px 10px; 
-                    font-size: 12px; 
-                    font-weight: bold; 
-                    color: #000000; 
-                    border-left: 4px solid #000000; 
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 8.5px; color: #000000; }}
-                th {{ background-color: #e2e8f0; color: #000000; padding: 3px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
-                td {{ padding: 3px; border: 1px solid #000000; color: #000000; }}
-                tr:nth-child(even) {{ background-color: #ffffff; }}
-                .obs-bloco {{ margin-top: 3px; font-size: 8.5px; font-style: italic; color: #333333; }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>FERROPORT — PLANO DE LIMPEZA OPERACIONAL</h1>
-                <p>Relatório Consolidado Diário &nbsp;|&nbsp; <b>Data do Plano:</b> {data_plano}</p>
-            </div>
-        """
-        
-        if df_d_p.empty:
-            html += "<p>Nenhuma atividade registada para esta data.</p>"
-        else:
-            turnos_html = [
-                ("DIURNO", "Turno Diurno"),
-                ("ADM", "Turno ADM"),
-                ("NOTURNO", "Turno Noturno")
-            ]
-            for codigo_turno, titulo_turno in turnos_html:
-                df_t = df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == codigo_turno]
-                
-                if codigo_turno == "ADM":
-                    t_info = turma_adm
-                    c_info = chefe_adm
-                elif codigo_turno == "DIURNO":
-                    t_info = turma_diurno
-                    c_info = chefe_diurno
-                else:
-                    t_info = turma_noturno
-                    c_info = chefe_noturno
-
-                if not df_t.empty:
-                    html += f"""
-                    <div class="bloco-container">
-                        <div class="bloco-titulo">
-                            <span>{titulo_turno}</span>
-                            <span style="font-size: 9.5px; font-weight: normal; color: #000000;">
-                                👥 <b>Equipe:</b> {t_info} &nbsp;|&nbsp; 👤 <b>Chefe:</b> {c_info}
-                            </span>
-                        </div>
-                        <table>
-                            <thead>
-                                <tr><th>Nº</th><th>Cód. Atividade</th><th>Hora Ini.</th><th>Hora Fim.</th><th>Ativo</th><th>NR12</th><th>Dados da Atividade</th></tr>
-                            </thead>
-                            <tbody>
-                    """
-                    for idx, (_, row) in enumerate(df_t.iterrows(), 1):
-                        html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
-                    html += "</tbody></table>"
-                    
-                    if 'Observacao' in df_t.columns:
-                        obs_unicas = df_t['Observacao'].dropna().unique()
-                        obs_texto = " | ".join([str(o) for o in obs_unicas if str(o).strip()])
-                        if obs_texto:
-                            html += f'<div class="obs-bloco"><b>Observação:</b> {obs_texto}</div>'
-                    
-                    html += "</div>"
-                    
-        html += """
-            <script>
-                window.onload = function() { 
-                    window.print(); 
-                }
-            </script>
-        </body>
-        </html>
-        """
-        return html
-
-    with col_down_grade:
-        if not df_filtrado_data.empty:
-            timestamp_str = datetime.now().strftime("%d%m%H%M")
-            nome_arquivo_download = f"Plano_de_Limpeza_{timestamp_str}.html"
-            
-            html_para_download = gerar_html_retrato(df_plano_atual, data_selecionada_filtro)
-            b64_down = base64.b64encode(html_para_download.encode('utf-8')).decode()
-            
-            st.markdown(
-                f"""
-                <a href="data:text/html;base64,{b64_down}" download="{nome_arquivo_download}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #003366; color: white; border: none; padding: 9px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: sans-serif;">
-                        🖨️ Imprimir
-                    </button>
-                </a>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.button("🖨️ Imprimir", disabled=True, use_container_width=True)
-
-    st.markdown("""
+  st.markdown(
+      """
     <style>
         button[kind="primary"] {
             background-color: #003366 !important;
@@ -396,118 +509,169 @@ try:
             border-color: #002244 !important;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
-    # ==========================================
-    # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM
-    # ==========================================
-    col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
-    with col_lbl_dist:
-        st.markdown("<div style='margin-top: 10px; font-weight: 600; font-size: 14px;'>Lista de Distribuição:</div>", unsafe_allow_html=True)
-    with col_input_email:
-        def atualizar_emails_callback():
-            novo_valor = st.session_state.input_emails_state
-            salvar_emails_nuvem(novo_valor)
-            st.session_state.emails_distribuicao = novo_valor
+  # ==========================================
+  # CAMPO: LISTA DE DISTRIBUIÇÃO PERSISTIDA EM NUVEM
+  # ==========================================
+  col_lbl_dist, col_input_email, col_btn_email = st.columns([1.5, 5.5, 1.0])
+  with col_lbl_dist:
+    st.markdown(
+        "<div style='margin-top: 10px; font-weight: 600; font-size:"
+        " 14px;'>Lista de Distribuição:</div>",
+        unsafe_allow_html=True,
+    )
+  with col_input_email:
 
-        lista_emails = st.text_input(
-            "Destinatários", 
-            value=st.session_state.emails_distribuicao, 
-            key="input_emails_state",
-            on_change=atualizar_emails_callback,
-            label_visibility="collapsed"
-        )
-    with col_btn_email:
-        btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+    def atualizar_emails_callback():
+      novo_valor = st.session_state.input_emails_state
+      salvar_emails_nuvem(novo_valor)
+      st.session_state.emails_distribuicao = novo_valor
 
-    if btn_enviar_outlook:
-        salvar_emails_nuvem(lista_emails)
-        st.session_state.emails_distribuicao = lista_emails
-        
-        assunto = f"[Ferroport] Plano de Limpeza Operacional - {data_selecionada_filtro}"
-        corpo = f"""Prezados(as),
+    lista_emails = st.text_input(
+        "Destinatários",
+        value=st.session_state.emails_distribuicao,
+        key="input_emails_state",
+        on_change=atualizar_emails_callback,
+        label_visibility="collapsed",
+    )
+  with col_btn_email:
+    btn_enviar_outlook = st.button("✉️ Enviar Plano", use_container_width=True)
+
+  if btn_enviar_outlook:
+    salvar_emails_nuvem(lista_emails)
+    st.session_state.emails_distribuicao = lista_emails
+
+    assunto = (
+        "[Ferroport] Plano de Limpeza Operacional -"
+        f" {data_selecionada_filtro}"
+    )
+    corpo = f"""Prezados(as),
 
 Segue em anexo o Plano de Limpeza para o dia {data_selecionada_filtro}.
 
 Atenciosamente,"""
-        
-        assunto_encoded = urllib.parse.quote(assunto)
-        corpo_encoded = urllib.parse.quote(corpo)
-        mailto_link = f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
-        
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={mailto_link}">', unsafe_allow_html=True)
 
-    st.markdown("---")
+    assunto_encoded = urllib.parse.quote(assunto)
+    corpo_encoded = urllib.parse.quote(corpo)
+    mailto_link = (
+        f"mailto:{lista_emails}?subject={assunto_encoded}&body={corpo_encoded}"
+    )
 
-    # ==========================================
-    # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO (LINHAS REORGANIZADAS)
-    # ==========================================
-    st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
+    st.markdown(
+        f'<meta http-equiv="refresh" content="0;url={mailto_link}">',
+        unsafe_allow_html=True,
+    )
 
-    data_stamp = data_pesquisa_obj
+  st.markdown("---")
 
-    # Linha 1 - Data, Hora Inicial, Hora Final alinhados lado a lado
-    col_l1_1, col_l1_2, col_l1_3 = st.sidebar.columns(3)
-    with col_l1_1:
-        st.text_input("Data", value=data_stamp.strftime('%d/%m/%Y'), disabled=True, key="sidebar_data_f")
-    with col_l1_2:
-        hora_ini_form = st.selectbox("Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini")
-    with col_l1_3:
-        hora_fim_form = st.selectbox("Hora Final", options=lista_horarios, index=8, key="sel_h_fim")
-        
-    # Linha 2 - Turma/Equipe, Turno alinhados lado a lado
-    col_l2_1, col_l2_2 = st.sidebar.columns(2)
-    with col_l2_1:
-        turma_form = st.selectbox("Turma / Equipe", options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"], key="sel_turma_main")
-    with col_l2_2:
-        turno_form = st.selectbox("Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main")
+  # ==========================================
+  # BARRA LATERAL: MENU DE PLANEJAMENTO REATIVO (LINHAS REORGANIZADAS)
+  # ==========================================
+  st.sidebar.markdown("### 🎛️ MENU DE PLANEJAMENTO")
 
-    # Linha 3 - Chefe de Turno e Configuração de chefes alinhados lado a lado
-    col_l3_1, col_l3_2 = st.sidebar.columns([3, 1])
-    with col_l3_1:
-        chefe_form = st.selectbox("Chefe de Turno", options=st.session_state.lista_chefes, key="sel_chefe_main")
-    with col_l3_2:
-        st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
-        if st.button("⚙️", key="btn_cad_chefe", help="Gerenciar Chefes", use_container_width=True):
-            st.session_state['mostrar_gestao_chefe'] = not st.session_state.get('mostrar_gestao_chefe', False)
+  data_stamp = data_pesquisa_obj
 
-    if st.session_state.get('mostrar_gestao_chefe', False):
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("#### 👥 Gestão de Chefes")
-        novo_matricula = st.sidebar.text_input("Matrícula")
-        novo_nome = st.sidebar.text_input("Nome Completo")
-        col_s_ch, col_r_ch = st.sidebar.columns(2)
-        with col_s_ch:
-            if st.sidebar.button("💾 Salvar", key="save_chefe_btn", use_container_width=True):
-                if novo_matricula and novo_nome:
-                    novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
-                    if novo_chefe_str not in st.session_state.lista_chefes:
-                        st.session_state.lista_chefes.append(novo_chefe_str)
-                        salvar_chefe_nuvem(novo_chefe_str)
-                        st.session_state['mostrar_gestao_chefe'] = False
-                        st.sidebar.success("Salvo com sucesso!")
-                        st.rerun()
-                    else:
-                        st.sidebar.warning("Já cadastrado.")
-                else:
-                    st.sidebar.error("Preencha os campos.")
-        with col_r_ch:
-            chefe_a_remover = st.sidebar.selectbox("Remover", options=st.session_state.lista_chefes, key="sel_rem_chefe_clean", label_visibility="collapsed")
-            if st.sidebar.button("🗑️ Excluir", key="conf_rem_chefe_btn", use_container_width=True):
-                chefes_base_original = df_os['CHEFE_TURNO'].dropna().unique().tolist() if 'CHEFE_TURNO' in df_os.columns else []
-                if chefe_a_remover in chefes_base_original:
-                    st.sidebar.warning("Impossível remover chefe da base oficial.")
-                else:
-                    if chefe_a_remover in st.session_state.lista_chefes:
-                        st.session_state.lista_chefes.remove(chefe_a_remover)
-                        remover_chefe_nuvem(chefe_a_remover)
-                        st.session_state['mostrar_gestao_chefe'] = False
-                        st.sidebar.success("Removido!")
-                        st.rerun()
-        st.sidebar.markdown("---")
+  # Linha 1 - Data, Hora Inicial, Hora Final alinhados lado a lado
+  col_l1_1, col_l1_2, col_l1_3 = st.sidebar.columns(3)
+  with col_l1_1:
+    st.text_input(
+        "Data",
+        value=data_stamp.strftime("%d/%m/%Y"),
+        disabled=True,
+        key="sidebar_data_f",
+    )
+  with col_l1_2:
+    hora_ini_form = st.sidebar.selectbox(
+        "Hora Inicial", options=lista_horarios, index=7, key="sel_h_ini"
+    )
+  with col_l1_3:
+    hora_fim_form = st.sidebar.selectbox(
+        "Hora Final", options=lista_horarios, index=8, key="sel_h_fim"
+    )
 
-    cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
-    css_dinamico = f"""
+  # Linha 2 - Turma/Equipe, Turno alinhados lado a lado
+  col_l2_1, col_l2_2 = st.sidebar.columns(2)
+  with col_l2_1:
+    turma_form = st.sidebar.selectbox(
+        "Turma / Equipe",
+        options=["AMARELA", "BRANCA", "VERDE", "AZUL", "ADM"],
+        key="sel_turma_main",
+    )
+  with col_l2_2:
+    turno_form = st.sidebar.selectbox(
+        "Turno", options=["DIURNO", "ADM", "NOTURNO"], key="sel_turno_main"
+    )
+
+  # Linha 3 - Chefe de Turno e Configuração de chefes alinhados lado a lado
+  col_l3_1, col_l3_2 = st.sidebar.columns([3, 1])
+  with col_l3_1:
+    chefe_form = st.sidebar.selectbox(
+        "Chefe de Turno",
+        options=st.session_state.lista_chefes,
+        key="sel_chefe_main",
+    )
+  with col_l3_2:
+    st.markdown("<div style='margin-top: 26px;'></div>", unsafe_allow_html=True)
+    if st.sidebar.button(
+        "⚙️", key="btn_cad_chefe", help="Gerenciar Chefes", use_container_width=True
+    ):
+      st.session_state["mostrar_gestao_chefe"] = not st.session_state.get(
+          "mostrar_gestao_chefe", False
+      )
+
+  if st.session_state.get("mostrar_gestao_chefe", False):
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("#### 👥 Gestão de Chefes")
+    novo_matricula = st.sidebar.text_input("Matrícula")
+    novo_nome = st.sidebar.text_input("Nome Completo")
+    col_s_ch, col_r_ch = st.sidebar.columns(2)
+    with col_s_ch:
+      if st.sidebar.button(
+          "💾 Salvar", key="save_chefe_btn", use_container_width=True
+      ):
+        if novo_matricula and novo_nome:
+          novo_chefe_str = f"{novo_matricula} - {novo_nome.upper()}"
+          if novo_chefe_str not in st.session_state.lista_chefes:
+            st.session_state.lista_chefes.append(novo_chefe_str)
+            salvar_chefe_nuvem(novo_chefe_str)
+            st.session_state["mostrar_gestao_chefe"] = False
+            st.sidebar.success("Salvo com sucesso!")
+            st.rerun()
+          else:
+            st.sidebar.warning("Já cadastrado.")
+        else:
+          st.sidebar.error("Preencha os campos.")
+    with col_r_ch:
+      chefe_a_remover = st.sidebar.selectbox(
+          "Remover",
+          options=st.session_state.lista_chefes,
+          key="sel_rem_chefe_clean",
+          label_visibility="collapsed",
+      )
+      if st.sidebar.button(
+          "🗑️ Excluir", key="conf_rem_chefe_btn", use_container_width=True
+      ):
+        chefes_base_original = (
+            df_os["CHEFE_TURNO"].dropna().unique().tolist()
+            if "CHEFE_TURNO" in df_os.columns
+            else []
+        )
+        if chefe_a_remover in chefes_base_original:
+          st.sidebar.warning("Impossível remover chefe da base oficial.")
+        else:
+          if chefe_a_remover in st.session_state.lista_chefes:
+            st.session_state.lista_chefes.remove(chefe_a_remover)
+            remover_chefe_nuvem(chefe_a_remover)
+            st.session_state["mostrar_gestao_chefe"] = False
+            st.sidebar.success("Removido!")
+            st.rerun()
+    st.sidebar.markdown("---")
+
+  cor_dinamica = mapa_cores.get(turma_form, "#FFD700")
+  css_dinamico = f"""
     <style>
         div[data-baseweb="select"] span[title="AMARELA"],
         div[data-baseweb="select"] span[title="BRANCA"],
@@ -521,5 +685,303 @@ Atenciosamente,"""
         }}
     </style>
     """
-    st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
-    st.sidebar.markdown("---")
+  st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
+  st.sidebar.markdown("---")
+
+  opcao_selecionada = st.sidebar.selectbox(
+      "Selecione o COD. ATIVIDADE",
+      options=lista_opcoes_atividades,
+      index=0,
+      placeholder="Digite para pesquisar...",
+      key="sel_atividade_main",
+  )
+
+  st.sidebar.markdown(
+      "<div style='font-size: 11.5px; color: #5c6d76; margin-top: -6px;"
+      " margin-bottom: 6px;'>⚠️ Certifique-se de selecionar o código correto"
+      " correspondente à atividade operacional vigente.</div>",
+      unsafe_allow_html=True,
+  )
+  observacao_atividade = st.sidebar.text_area(
+      "Observação da Atividade",
+      placeholder="Digite observações complementares...",
+      key="obs_atividade_input",
+  )
+
+  if " - " in opcao_selecionada:
+    cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(
+        " - ", 1
+    )
+  else:
+    cod_atividade_escolhido = opcao_selecionada
+    descricao_atividade = "Atividade Operacional Registrada"
+
+  ativo_extraido = "GERAL"
+  if col_cod in df_os.columns and col_ativo in df_os.columns:
+    resultado_sql = df_os[
+        df_os[col_cod].astype(str) == str(cod_atividade_escolhido)
+    ]
+    if not resultado_sql.empty:
+      val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
+      if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
+        ativo_extraido = val_ativo
+      else:
+        partes = cod_atividade_escolhido.split(".")
+        if len(partes) > 0 and len(partes[0]) >= 4:
+          ativo_extraido = partes[0][:8]
+  else:
+    partes = cod_atividade_escolhido.split(".")
+    if len(partes) > 0:
+      ativo_extraido = partes[0][:8]
+
+  if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
+    partes = cod_atividade_escolhido.split(".")
+    ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
+
+  st.sidebar.info(f"{descricao_atividade}")
+
+  if st.sidebar.button(
+      "💾 Incluir na Grade", use_container_width=True, type="primary"
+  ):
+    novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
+    novo_registro = {
+        "UID": novo_uid,
+        "TURMA": turma_form,
+        "CHEFE DE TURNO": chefe_form,
+        "TURNO": turno_form,
+        "DATA": data_stamp.strftime("%d/%m/%Y"),
+        "Cód. Atividade": cod_atividade_escolhido,
+        "Hora Inicial": hora_ini_form,
+        "Hora Final": hora_fim_form,
+        "Ativo": ativo_extraido,
+        "Retirada NR12": "NÃO",
+        "Dados da Atividade": descricao_atividade,
+        "Observacao": observacao_atividade,
+    }
+    st.session_state.plano_operacional.append(novo_registro)
+    salvar_plano_nuvem(st.session_state.plano_operacional)
+    st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
+    st.rerun()
+
+  st.markdown("---")
+
+  # ==========================================
+  # MODAL DE ALTERAÇÃO DE HORÁRIO
+  # ==========================================
+  @st.dialog("🕒 Alterar Horário da Atividade")
+  def modal_alterar_horario(uid_alvo, titulo_t, sel_key):
+    st.write(f"Editando horário no **{titulo_t}**")
+    nova_h_ini = st.selectbox(
+        "Nova Hora Inicial", options=lista_horarios, key="modal_nova_hi"
+    )
+    nova_h_fim = st.selectbox(
+        "Nova Hora Final", options=lista_horarios, key="modal_nova_hf"
+    )
+
+    if st.button("💾 Gravar Alteração", type="primary", use_container_width=True):
+      for reg in st.session_state.plano_operacional:
+        if str(reg.get("UID")) == str(uid_alvo):
+          reg["Hora Inicial"] = nova_h_ini
+          reg["Hora Final"] = nova_h_fim
+          break
+      salvar_plano_nuvem(st.session_state.plano_operacional)
+
+      if sel_key in st.session_state:
+        del st.session_state[sel_key]
+      st.session_state[sel_key] = {"selection": {"rows": []}}
+
+      st.success("Horário alterado com sucesso!")
+      st.rerun()
+
+  turnos_secoes = [
+      ("DIURNO", "☀️ Turno Diurno"),
+      ("ADM", "🏢 Turno ADM"),
+      ("NOTURNO", "🌙 Turno Noturno"),
+  ]
+
+  for codigo_turno, titulo_turno in turnos_secoes:
+    df_turno_atual = (
+        df_filtrado_data[
+            df_filtrado_data["TURNO"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            == codigo_turno
+        ]
+        if not df_filtrado_data.empty
+        else pd.DataFrame()
+    )
+
+    if codigo_turno == "ADM":
+      turma_info, chefe_info, data_info = turma_adm, chefe_adm, data_comum
+      cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
+    elif codigo_turno == "DIURNO":
+      turma_info, chefe_info, data_info = turma_diurno, chefe_diurno, data_comum
+      cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
+    else:
+      if not df_turno_atual.empty:
+        ultima_linha = df_turno_atual.iloc[-1]
+        turma_info = str(ultima_linha.get("TURMA", "N/D")).strip().upper()
+        chefe_info = str(
+            ultima_linha.get(
+                "CHEFE_TURNO", ultima_linha.get("CHEFE DE TURNO", "N/D")
+            )
+        )
+        data_info = str(ultima_linha.get("DATA", data_selecionada_filtro))
+      else:
+        turma_info = "AMARELA"
+        chefe_info = chefe_diurno
+        data_info = data_selecionada_filtro
+      cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
+
+    selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
+
+    col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = (
+        st.columns([5.0, 1.0, 1.0, 1.0])
+    )
+    with col_titulo_bloco:
+      html_cabecalho = f"""
+        <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
+            <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
+            <span style="color: #d0d0d0; font-size: 14px;">
+                <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
+                &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
+                &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
+            </span>
+        </div>
+        """
+      st.markdown(html_cabecalho, unsafe_allow_html=True)
+
+    with col_btn_alt:
+      if modo_leitura:
+        st.button(
+            "🕒 Horário",
+            key=f"btn_alt_bloqueado_{codigo_turno}",
+            disabled=True,
+            use_container_width=True,
+            help="Registos anteriores protegidos.",
+        )
+      else:
+        if st.button(
+            "🕒 Horário",
+            key=f"btn_alt_bloco_{codigo_turno}",
+            use_container_width=True,
+            help="Alterar horário da linha selecionada",
+        ):
+          estado_grid = st.session_state.get(selecao_key, {})
+          linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+
+          if not linhas_selecionadas:
+            st.warning("Selecione uma linha na tabela.")
+          elif len(linhas_selecionadas) > 1:
+            st.warning("Selecione apenas uma linha para alterar o horário.")
+          else:
+            idx_l = linhas_selecionadas[0]
+            if idx_l < len(df_turno_atual):
+              uid_alvo = str(df_turno_atual.iloc[idx_l].get("UID", ""))
+              modal_alterar_horario(uid_alvo, titulo_turno, selecao_key)
+
+    with col_botao_excluir:
+      if modo_leitura:
+        st.button(
+            "🔒 Protegido",
+            key=f"btn_excluir_bloqueado_{codigo_turno}",
+            disabled=True,
+            use_container_width=True,
+            help="Registros de datas anteriores estão protegidos no modo leitura.",
+        )
+      else:
+        if st.button(
+            "🗑️ Excluir Linha",
+            key=f"btn_excluir_bloco_{codigo_turno}",
+            use_container_width=True,
+        ):
+          estado_grid = st.session_state.get(selecao_key, {})
+          linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
+
+          if linhas_selecionadas:
+            uids_a_remover = []
+            for idx_sel in linhas_selecionadas:
+              if idx_sel < len(df_turno_atual):
+                uid_item = str(df_turno_atual.iloc[idx_sel].get("UID", ""))
+                if uid_item:
+                  uids_a_remover.append(uid_item)
+
+            if uids_a_remover:
+              st.session_state.plano_operacional = [
+                  item
+                  for item in st.session_state.plano_operacional
+                  if str(item.get("UID")) not in uids_a_remover
+              ]
+              salvar_plano_nuvem(st.session_state.plano_operacional)
+
+              if selecao_key in st.session_state:
+                del st.session_state[selecao_key]
+              st.session_state[selecao_key] = {"selection": {"rows": []}}
+
+              st.success(
+                  f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!"
+              )
+              st.rerun()
+          else:
+            st.warning("Selecione pelo menos uma linha na tabela.")
+
+    if not df_turno_atual.empty:
+      df_exibicao = df_turno_atual.copy()
+      if "UID" not in df_exibicao.columns:
+        df_exibicao["UID"] = [f"UID_{i}" for i in range(len(df_exibicao))]
+
+      df_exibicao.insert(0, "Nº", range(1, len(df_exibicao) + 1))
+
+      colunas_exibir = [
+          "Nº",
+          "UID",
+          "Cód. Atividade",
+          "Hora Inicial",
+          "Hora Final",
+          "Ativo",
+          "Retirada NR12",
+          "Dados da Atividade",
+      ]
+      df_final_exibir = df_exibicao[
+          [c for c in colunas_exibir if c in df_exibicao.columns]
+      ]
+
+      st.dataframe(
+          df_final_exibir,
+          use_container_width=True,
+          hide_index=True,
+          selection_mode="disabled" if modo_leitura else "multi-row",
+          on_select="rerun",
+          column_config={
+              "Nº": st.column_config.NumberColumn("Nº", width="auto"),
+              "Cód. Atividade": st.column_config.TextColumn(
+                  "Cód. Atividade", width="auto"
+              ),
+              "Hora Inicial": st.column_config.TextColumn(
+                  "Hora Inicial", width="auto"
+              ),
+              "Hora Final": st.column_config.TextColumn(
+                  "Hora Final", width="auto"
+              ),
+              "Ativo": st.column_config.TextColumn("Ativo", width="auto"),
+              "Retirada NR12": st.column_config.TextColumn(
+                  "Retirada NR12", width="auto"
+              ),
+              "Dados da Atividade": st.column_config.TextColumn(
+                  "Dados da Atividade", width="auto"
+              ),
+              "UID": None,
+          },
+          key=selecao_key,
+      )
+    else:
+      st.info(
+          f"Nenhuma atividade registada no {titulo_turno.lower()} para a data"
+          f" {data_selecionada_filtro}."
+      )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+except Exception as e:
+  st.error(f"Erro ao carregar o sistema: {e}")
