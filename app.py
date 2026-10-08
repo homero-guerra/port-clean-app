@@ -17,7 +17,7 @@ mapa_cores = {
     "ADM": "#A9A9A9",
 }
 
-# Estilização CSS geral para refinamento visual do painel e padronização de botões
+# Estilização CSS geral para refinamento visual do painel, padronização de botões e tabelas zebradas
 st.markdown(
     """
 <style>
@@ -39,6 +39,12 @@ st.markdown(
     /* Padronizar botões gerais */
     div[data-testid="stButton"] button {
         font-weight: bold;
+    }
+
+    /* Linhas zebradas nas tabelas do Streamlit */
+    [data-testid="stTable"] tr:nth-child(even), 
+    [data-testid="stDataFrame"] tr:nth-child(even) {
+        background-color: #f8f9fa !important;
     }
 </style>
 """,
@@ -213,10 +219,10 @@ def gerar_html_retrato(
         <style>
             @page {{ size: portrait; margin: 8mm; }}
             body {{ font-family: Arial, sans-serif; color: #000000; margin: 0; padding: 5px; }}
-            .header {{ border-bottom: 2px solid #000000; padding-bottom: 3mm; margin-bottom: 8px; }}
+            .header {{ border-bottom: 2px solid #000000; padding-bottom: 3mm; margin-bottom: 8mm; }}
             .header h1 {{ margin: 0; font-size: 14px; color: #000000; font-weight: bold; }}
             .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 9px; }}
-            .bloco-container {{ margin-top: 8px; page-break-inside: avoid; }}
+            .bloco-container {{ margin-top: 8mm; page-break-inside: avoid; }}
             .bloco-titulo {{ 
                 background-color: #f1f5f9; 
                 padding: 6px 10px; 
@@ -231,7 +237,7 @@ def gerar_html_retrato(
             table {{ width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 8.5px; color: #000000; }}
             th {{ background-color: #e2e8f0; color: #000000; padding: 3px; text-align: left; border: 1px solid #000000; font-weight: bold; }}
             td {{ padding: 3px; border: 1px solid #000000; color: #000000; }}
-            tr:nth-child(even) {{ background-color: #ffffff; }}
+            tr:nth-child(even) {{ background-color: #f8f9fa !important; }}
             .obs-bloco {{ margin-top: 3px; font-size: 8.5px; font-style: italic; color: #333333; }}
         </style>
     </head>
