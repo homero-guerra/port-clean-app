@@ -199,10 +199,13 @@ try:
     # ==========================================
     df_plano_atual = pd.DataFrame(st.session_state.plano_operacional)
     
-    if not df_plano_atual.empty and 'Ativo' in df_plano_atual.columns:
-        df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
-            lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
-        )
+    if not df_plano_atual.empty:
+        if 'Ativo' in df_plano_atual.columns:
+            df_plano_atual['Ativo'] = df_plano_atual['Ativo'].apply(
+                lambda x: "GERAL" if str(x).upper() in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""] else x
+            )
+        if 'Observacao' not in df_plano_atual.columns:
+            df_plano_atual['Observacao'] = ""
 
     col_tit_grade, col_filtro_grade, col_vazio_medio, col_down_grade = st.columns([3.2, 1.6, 2.2, 1.0])
     with col_tit_grade:
@@ -262,7 +265,6 @@ try:
     # ==========================================
     def gerar_html_retrato(df_dados, data_plano):
         df_d_p = df_dados[df_dados['DATA'] == data_plano]
-        tem_adm = not df_d_p[df_d_p['TURNO'].astype(str).str.strip().str.upper() == "ADM"].empty
 
         html = f"""
         <!DOCTYPE html>
@@ -277,7 +279,6 @@ try:
                 .header h1 {{ margin: 0; font-size: 14px; color: #000000; font-weight: bold; }}
                 .header p {{ margin: 2px 0 0 0; color: #000000; font-size: 9px; }}
                 .bloco-container {{ margin-top: 8px; page-break-inside: avoid; }}
-                .page-break {{ page-break-before: always; }}
                 .bloco-titulo {{ 
                     background-color: #f1f5f9; 
                     padding: 6px 10px; 
@@ -323,7 +324,6 @@ try:
                 else:
                     t_info = turma_noturno
                     c_info = chefe_noturno
-                d_info = data_plano
 
                 if not df_t.empty:
                     html += f"""
@@ -344,11 +344,11 @@ try:
                         html += f"<tr><td>{idx}</td><td>{row.get('Cód. Atividade', '')}</td><td>{row.get('Hora Inicial', '')}</td><td>{row.get('Hora Final', '')}</td><td>{row.get('Ativo', '')}</td><td>{row.get('Retirada NR12', '')}</td><td>{row.get('Dados da Atividade', '')}</td></tr>"
                     html += "</tbody></table>"
                     
-                    # Renderizar observações se existirem preenchidas no turno
-                    obs_unicas = df_t['Observacao'].dropna().unique()
-                    obs_texto = " | ".join([str(o) for o in obs_unicas if str(o).strip()])
-                    if obs_texto:
-                        html += f'<div class="obs-bloco"><b>Observação:</b> {obs_texto}</div>'
+                    if 'Observacao' in df_t.columns:
+                        obs_unicas = df_t['Observacao'].dropna().unique()
+                        obs_texto = " | ".join([str(o) for o in obs_unicas if str(o).strip()])
+                        if obs_texto:
+                            html += f'<div class="obs-bloco"><b>Observação:</b> {obs_texto}</div>'
                     
                     html += "</div>"
                     
@@ -523,220 +523,3 @@ Atenciosamente,"""
     """
     st.sidebar.markdown(css_dinamico, unsafe_allow_html=True)
     st.sidebar.markdown("---")
-    
-    opcao_selecionada = st.sidebar.selectbox(
-        "Selecione o COD. ATIVIDADE", 
-        options=lista_opcoes_atividades,
-        index=0,
-        placeholder="Digite para pesquisar...",
-        key="sel_atividade_main"
-    )
-
-    # Inclusão do campo "Observação" logo abaixo do aviso textual do campo Selecione o COD. ATIVIDADE
-    st.sidebar.markdown("<div style='font-size: 11.5px; color: #5c6d76; margin-top: -6px; margin-bottom: 6px;'>⚠️ Certifique-se de selecionar o código correto correspondente à atividade operacional vigente.</div>", unsafe_allow_html=True)
-    observacao_atividade = st.sidebar.text_area("Observação da Atividade", placeholder="Digite observações complementares...", key="obs_atividade_input")
-
-    if " - " in opcao_selecionada:
-        cod_atividade_escolhido, descricao_atividade = opcao_selecionada.split(" - ", 1)
-    else:
-        cod_atividade_escolhido = opcao_selecionada
-        descricao_atividade = "Atividade Operacional Registrada"
-
-    ativo_extraido = "GERAL"
-    if col_cod in df_os.columns and col_ativo in df_os.columns:
-        resultado_sql = df_os[df_os[col_cod].astype(str) == str(cod_atividade_escolhido)]
-        if not resultado_sql.empty:
-            val_ativo = str(resultado_sql[col_ativo].iloc[0]).upper()
-            if val_ativo not in ["DIURNO", "NOTURNO", "ADM", "NAN", "NONE", ""]:
-                ativo_extraido = val_ativo
-            else:
-                partes = cod_atividade_escolhido.split('.')
-                if len(partes) > 0 and len(partes[0]) >= 4:
-                    ativo_extraido = partes[0][:8]
-    else:
-        partes = cod_atividade_escolhido.split('.')
-        if len(partes) > 0:
-            ativo_extraido = partes[0][:8]
-
-    if ativo_extraido in ["DIURNO", "NOTURNO", "ADM"]:
-        partes = cod_atividade_escolhido.split('.')
-        ativo_extraido = partes[0][:8] if len(partes) > 0 else "GERAL"
-
-    st.sidebar.info(f"{descricao_atividade}")
-
-    if st.sidebar.button("💾 Incluir na Grade", use_container_width=True, type="primary"):
-        novo_uid = f"UID_{int(datetime.now().timestamp())}_{len(st.session_state.plano_operacional)}"
-        novo_registro = {
-            "UID": novo_uid,
-            "TURMA": turma_form,
-            "CHEFE DE TURNO": chefe_form,
-            "TURNO": turno_form,
-            "DATA": data_stamp.strftime('%d/%m/%Y'),
-            "Cód. Atividade": cod_atividade_escolhido,
-            "Hora Inicial": hora_ini_form,
-            "Hora Final": hora_fim_form,
-            "Ativo": ativo_extraido,
-            "Retirada NR12": "NÃO",
-            "Dados da Atividade": descricao_atividade,
-            "Observacao": observacao_atividade
-        }
-        st.session_state.plano_operacional.append(novo_registro)
-        salvar_plano_nuvem(st.session_state.plano_operacional)
-        st.sidebar.success(f"Adicionado e salvo com sucesso no Turno {turno_form}!")
-        st.rerun()
-
-    st.markdown("---")
-
-    # ==========================================
-    # MODAL DE ALTERAÇÃO DE HORÁRIO
-    # ==========================================
-    @st.dialog("🕒 Alterar Horário da Atividade")
-    def modal_alterar_horario(uid_alvo, titulo_t, sel_key):
-        st.write(f"Editando horário no **{titulo_t}**")
-        nova_h_ini = st.selectbox("Nova Hora Inicial", options=lista_horarios, key="modal_nova_hi")
-        nova_h_fim = st.selectbox("Nova Hora Final", options=lista_horarios, key="modal_nova_hf")
-        
-        if st.button("💾 Gravar Alteração", type="primary", use_container_width=True):
-            for reg in st.session_state.plano_operacional:
-                if str(reg.get('UID')) == str(uid_alvo):
-                    reg['Hora Inicial'] = nova_h_ini
-                    reg['Hora Final'] = nova_h_fim
-                    break
-            salvar_plano_nuvem(st.session_state.plano_operacional)
-            
-            if sel_key in st.session_state:
-                del st.session_state[sel_key]
-            st.session_state[sel_key] = {"selection": {"rows": []}}
-                
-            st.success("Horário alterado com sucesso!")
-            st.rerun()
-
-    turnos_secoes = [
-        ("DIURNO", "☀️ Turno Diurno"),
-        ("ADM", "🏢 Turno ADM"),
-        ("NOTURNO", "🌙 Turno Noturno")
-    ]
-
-    for codigo_turno, titulo_turno in turnos_secoes:
-        df_turno_atual = df_filtrado_data[df_filtrado_data['TURNO'].astype(str).str.strip().str.upper() == codigo_turno] if not df_filtrado_data.empty else pd.DataFrame()
-        
-        if codigo_turno == "ADM":
-            turma_info = turma_adm
-            chefe_info = chefe_adm
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_adm, "#A9A9A9")
-        elif codigo_turno == "DIURNO":
-            turma_info = turma_diurno
-            chefe_info = chefe_diurno
-            data_info = data_comum
-            cor_destaque = mapa_cores.get(turma_diurno, "#FFD700")
-        else:
-            if not df_turno_atual.empty:
-                ultima_linha = df_turno_atual.iloc[-1]
-                turma_info = str(ultima_linha.get('TURMA', 'N/D')).strip().upper()
-                chefe_info = str(ultima_linha.get('CHEFE_TURNO', ultima_linha.get('CHEFE DE TURNO', 'N/D')))
-                data_info = str(ultima_linha.get('DATA', data_selecionada_filtro))
-            else:
-                turma_info = "AMARELA"
-                chefe_info = chefe_diurno
-                data_info = data_selecionada_filtro
-            cor_destaque = mapa_cores.get(turma_info, "#FFFFFF")
-
-        selecao_key = f"dataframe_grid_{codigo_turno}_{data_selecionada_filtro}"
-        
-        col_titulo_bloco, col_vazio_bloco, col_btn_alt, col_botao_excluir = st.columns([5.0, 1.0, 1.0, 1.0])
-        with col_titulo_bloco:
-            html_cabecalho = f"""
-            <div style="display: flex; align-items: baseline; gap: 15px; flex-wrap: wrap;">
-                <h4 style="color: {cor_destaque}; margin: 0; padding: 0;">{titulo_turno}</h4>
-                <span style="color: #d0d0d0; font-size: 14px;">
-                    <span style="color: {cor_destaque};">👥</span> <b>Equipe:</b> <span style="color:{cor_destaque}; font-weight:bold;">{turma_info}</span> 
-                    &nbsp;|&nbsp; <span style="color: {cor_destaque};">👤</span> <b>Chefe:</b> <span style="color:{cor_destaque};">{chefe_info}</span> 
-                    &nbsp;|&nbsp; 📅 <b>Data:</b> <span style="color:{cor_destaque};">{data_info}</span>
-                </span>
-            </div>
-            """
-            st.markdown(html_cabecalho, unsafe_allow_html=True)
-        
-        with col_btn_alt:
-            if modo_leitura:
-                st.button("🕒 Horário", key=f"btn_alt_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registos anteriores protegidos.")
-            else:
-                if st.button("🕒 Horário", key=f"btn_alt_bloco_{codigo_turno}", use_container_width=True, help="Alterar horário da linha selecionada"):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                    
-                    if not linhas_selecionadas:
-                        st.warning("Selecione uma linha na tabela.")
-                    elif len(linhas_selecionadas) > 1:
-                        st.warning("Selecione apenas uma linha para alterar o horário.")
-                    else:
-                        idx_l = linhas_selecionadas[0]
-                        if idx_l < len(df_turno_atual):
-                            uid_alvo = str(df_turno_atual.iloc[idx_l].get('UID', ''))
-                            modal_alterar_horario(uid_alvo, titulo_turno, selecao_key)
-
-        with col_botao_excluir:
-            if modo_leitura:
-                st.button("🔒 Protegido", key=f"btn_excluir_bloqueado_{codigo_turno}", disabled=True, use_container_width=True, help="Registros de datas anteriores estão protegidos no modo leitura.")
-            else:
-                if st.button("🗑️ Excluir Linha", key=f"btn_excluir_bloco_{codigo_turno}", use_container_width=True):
-                    estado_grid = st.session_state.get(selecao_key, {})
-                    linhas_selecionadas = estado_grid.get("selection", {}).get("rows", [])
-                    
-                    if linhas_selecionadas:
-                        uids_a_remover = []
-                        for idx_sel in linhas_selecionadas:
-                            if idx_sel < len(df_turno_atual):
-                                uid_item = str(df_turno_atual.iloc[idx_sel].get('UID', ''))
-                                if uid_item:
-                                    uids_a_remover.append(uid_item)
-                        
-                        if uids_a_remover:
-                            st.session_state.plano_operacional = [item for item in st.session_state.plano_operacional if str(item.get('UID')) not in uids_a_remover]
-                            salvar_plano_nuvem(st.session_state.plano_operacional)
-                            
-                            if selecao_key in st.session_state:
-                                del st.session_state[selecao_key]
-                            st.session_state[selecao_key] = {"selection": {"rows": []}}
-                                
-                            st.success(f"{len(uids_a_remover)} linha(s) excluída(s) com sucesso!")
-                            st.rerun()
-                    else:
-                        st.warning("Selecione pelo menos uma linha na tabela.")
-
-        if not df_turno_atual.empty:
-            df_exibicao = df_turno_atual.copy()
-            if 'UID' not in df_exibicao.columns:
-                df_exibicao['UID'] = [f"UID_{i}" for i in range(len(df_exibicao))]
-                
-            df_exibicao.insert(0, 'Nº', range(1, len(df_exibicao) + 1))
-            
-            colunas_exibir = ['Nº', 'UID', 'Cód. Atividade', 'Hora Inicial', 'Hora Final', 'Ativo', 'Retirada NR12', 'Dados da Atividade']
-            df_final_exibir = df_exibicao[[c for c in colunas_exibir if c in df_exibicao.columns]]
-            
-            st.dataframe(
-                df_final_exibir,
-                use_container_width=True,
-                hide_index=True,
-                selection_mode="disabled" if modo_leitura else "multi-row",
-                on_select="rerun",
-                column_config={
-                    "Nº": st.column_config.NumberColumn("Nº", width="auto"),
-                    "Cód. Atividade": st.column_config.TextColumn("Cód. Atividade", width="auto"),
-                    "Hora Inicial": st.column_config.TextColumn("Hora Inicial", width="auto"),
-                    "Hora Final": st.column_config.TextColumn("Hora Final", width="auto"),
-                    "Ativo": st.column_config.TextColumn("Ativo", width="auto"),
-                    "Retirada NR12": st.column_config.TextColumn("Retirada NR12", width="auto"),
-                    "Dados da Atividade": st.column_config.TextColumn("Dados da Atividade", width="auto"),
-                    "UID": None
-                },
-                key=selecao_key
-            )
-        else:
-            st.info(f"Nenhuma atividade registada no {titulo_turno.lower()} para a data {data_selecionada_filtro}.")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"Erro ao carregar o sistema: {e}")
